@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/chat_provider.dart';
 import 'screens/chat_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
 
 void main() {
@@ -38,16 +39,16 @@ class SilverAgentApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => ChatProvider(),
       child: MaterialApp(
-        title: 'SilverAgent - Healthcare Helper',
+        title: 'SilverAgent Super App',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          // Color scheme - Premium Teal & Coral
+          // Color scheme - Grab-inspired Teal-Green
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF00897B), // Teal 600
-            primary: const Color(0xFF00897B),
-            secondary: const Color(0xFFFF7043), // Coral 400
+            seedColor: const Color(0xFF00B14F), // Grab Green
+            primary: const Color(0xFF00B14F),
+            secondary: const Color(0xFFFF7043), // Coral Accent
             surface: Colors.white,
-            background: const Color(0xFFF8F9FA), // Off-white
+            background: const Color(0xFFF0F2F5), // Light Grey Background
             error: const Color(0xFFD32F2F),
             brightness: Brightness.light,
           ),
@@ -122,7 +123,7 @@ class SilverAgentApp extends StatelessWidget {
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
               elevation: 0,
-              backgroundColor: const Color(0xFF00897B),
+              backgroundColor: const Color(0xFF00B14F),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               shape: RoundedRectangleBorder(
@@ -142,8 +143,8 @@ class SilverAgentApp extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              side: const BorderSide(color: Color(0xFF00897B), width: 1.5),
-              foregroundColor: const Color(0xFF00897B),
+              side: const BorderSide(color: Color(0xFF00B14F), width: 1.5),
+              foregroundColor: const Color(0xFF00B14F),
               textStyle: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -175,7 +176,7 @@ class SilverAgentApp extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFF00897B), width: 2),
+              borderSide: const BorderSide(color: Color(0xFF00B14F), width: 2),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 20,
@@ -204,7 +205,8 @@ class SilverAgentApp extends StatelessWidget {
         // Routes
         initialRoute: '/',
         routes: {
-          '/': (context) => const ChatScreen(),
+          '/': (context) => const HomeScreen(),
+          '/healthcare': (context) => const ChatScreen(),
           '/profile': (context) => const ProfileScreen(),
         },
       ),

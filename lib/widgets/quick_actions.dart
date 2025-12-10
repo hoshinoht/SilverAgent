@@ -79,12 +79,11 @@ class _QuickActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.grey.shade100, width: 1),
             boxShadow: [
               BoxShadow(
-                color: theme.colorScheme.primary.withOpacity(0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: theme.colorScheme.primary.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -93,15 +92,22 @@ class _QuickActionButton extends StatelessWidget {
             children: [
               // Icon container
               Container(
-                width: 56,
-                height: 56,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.08),
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.primary.withOpacity(0.1),
+                      theme.colorScheme.primary.withOpacity(0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   _getIcon(action.icon),
-                  size: 26,
+                  size: 30,
                   color: theme.colorScheme.primary,
                 ),
               ),
@@ -109,21 +115,23 @@ class _QuickActionButton extends StatelessWidget {
               // Label
               Text(
                 action.label,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                   color: const Color(0xFF2C2C2C),
+                  fontSize: 15,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               if (action.sublabel != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   action.sublabel!,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.grey.shade600,
-                    fontSize: 11,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.grey.shade500,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,

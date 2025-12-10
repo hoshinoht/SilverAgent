@@ -10,6 +10,7 @@ class MessageBubble extends StatelessWidget {
   const MessageBubble({super.key, required this.message});
 
   @override
+  @override
   Widget build(BuildContext context) {
     final isUser = message.role == 'user';
     final theme = Theme.of(context);
@@ -19,100 +20,130 @@ class MessageBubble extends StatelessWidget {
       return _buildTypingIndicator(theme);
     }
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.8,
-        ),
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 20),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          gradient: isUser
-              ? LinearGradient(
-                  colors: [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.primary.withOpacity(0.8),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isUser ? null : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(24),
-            topRight: const Radius.circular(24),
-            bottomLeft: Radius.circular(isUser ? 24 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 24),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Agent badge for assistant messages
-            if (!isUser &&
-                message.agentType != null &&
-                message.agentType != AgentType.general)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildAgentBadge(message.agentType!, theme),
-              ),
-
-            // Message content
-            Text(
-              message.content,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: isUser ? Colors.white : const Color(0xFF333333),
-                height: 1.5,
-              ),
-            ),
-
-            const SizedBox(height: 6),
-
-            // Status and timestamp
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment:
+            isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          // Agent badge
+          if (!isUser) ...[
             Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                // Status icon
-                if (message.status != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: _buildStatusIcon(message.status!, isUser),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
                   ),
-
-                // Timestamp
+                  child: Icon(
+                    Icons.smart_toy_rounded,
+                    size: 14,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Text(
-                  _formatTime(message.timestamp),
+                  'SilverAgent',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: isUser
-                        ? Colors.white.withOpacity(0.7)
-                        : Colors.grey.shade500,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 4),
+          ],
 
-            // Appointment details if available
-            if (message.metadata?.appointmentDetails != null)
-              _buildAppointmentCard(
+          // Bubble
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              gradient: isUser
+                  ? LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary,
+                        const Color(0xFF00695C), // Darker teal for depth
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: isUser ? null : Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(24),
+                topRight: const Radius.circular(24),
+                bottomLeft: Radius.circular(isUser ? 24 : 4),
+                bottomRight: Radius.circular(isUser ? 4 : 24),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isUser
+                      ? theme.colorScheme.primary.withOpacity(0.2)
+                      : Colors.black.withOpacity(0.05),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Message content
+                Text(
+                  message.content,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: isUser ? Colors.white : const Color(0xFF2C2C2C),
+                    height: 1.5,
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Timestamp
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (message.status != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: _buildStatusIcon(message.status!, isUser),
+                      ),
+                    Text(
+                      _formatTime(message.timestamp),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: isUser 
+                            ? Colors.white.withOpacity(0.8) 
+                            : Colors.grey.shade400,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Appointment details if available
+          if (message.metadata?.appointmentDetails != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: _buildAppointmentCard(
                 message.metadata!.appointmentDetails!,
                 theme,
               ),
+            ),
 
-            // Error retry info
-            if (message.status == MessageStatus.retrying)
-              _buildRetryInfo(message.metadata, theme),
-          ],
-        ),
+          // Error retry info
+          if (message.status == MessageStatus.retrying)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: _buildRetryInfo(message.metadata, theme),
+            ),
+        ],
       ),
     );
   }
