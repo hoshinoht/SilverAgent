@@ -46,8 +46,7 @@ class SilverAgentApp extends StatelessWidget {
             seedColor: const Color(0xFFE8754F),
             primary: const Color(0xFFE8754F),
             secondary: const Color(0xFFF5F5F5),
-            surface: Colors.white,
-            background: const Color(0xFFFAFAFA),
+            surface: const Color(0xFFFAFAFA),
             error: const Color(0xFFB00020),
           ),
 

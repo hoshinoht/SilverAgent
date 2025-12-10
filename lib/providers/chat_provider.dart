@@ -331,7 +331,4 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
-  void dispose() {
-    super.dispose();
-  }
 }

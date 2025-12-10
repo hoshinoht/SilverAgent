@@ -39,19 +39,19 @@ class _ChatScreenState extends State<ChatScreen> {
     if (status.isGranted) {
       _speechAvailable = await _speech.initialize(
         onError: (error) {
-          print('Speech recognition error: $error');
+          debugPrint('Speech recognition error: $error');
           setState(() => _isListening = false);
         },
         onStatus: (status) {
-          print('Speech recognition status: $status');
+          debugPrint('Speech recognition status: $status');
           if (status == 'done' || status == 'notListening') {
             setState(() => _isListening = false);
           }
         },
       );
-      print('Speech available: $_speechAvailable');
+      debugPrint('Speech available: $_speechAvailable');
     } else {
-      print('Microphone permission denied');
+      debugPrint('Microphone permission denied');
       _speechAvailable = false;
     }
     setState(() {});
@@ -143,7 +143,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       drawer: _buildHistoryDrawer(context),
       body: SafeArea(
         child: Column(
@@ -192,7 +192,7 @@ class _ChatScreenState extends State<ChatScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -268,7 +268,7 @@ class _ChatScreenState extends State<ChatScreen> {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -356,7 +356,7 @@ class _ChatScreenState extends State<ChatScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -405,7 +405,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Material(
                 color: _isListening
                     ? Colors.red
-                    : theme.colorScheme.primary.withOpacity(0.1),
+                    : theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
                   onTap: chatProvider.isLoading ? null : _toggleListening,
