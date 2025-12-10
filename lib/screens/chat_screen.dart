@@ -25,6 +25,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isListening = false;
   bool _speechAvailable = false;
   String _currentTranscript = '';
+  bool _isKeyboardVisible = false;
 
   @override
   void initState() {
@@ -33,25 +34,31 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _initSpeech() async {
-    // Request microphone permission first
-    final status = await Permission.microphone.request();
+    try {
+      // Request microphone permission first
+      // Wrap in try-catch for Linux/Desktop where plugin might be missing
+      final status = await Permission.microphone.request();
 
-    if (status.isGranted) {
-      _speechAvailable = await _speech.initialize(
-        onError: (error) {
-          debugPrint('Speech recognition error: $error');
-          setState(() => _isListening = false);
-        },
-        onStatus: (status) {
-          debugPrint('Speech recognition status: $status');
-          if (status == 'done' || status == 'notListening') {
+      if (status.isGranted) {
+        _speechAvailable = await _speech.initialize(
+          onError: (error) {
+            debugPrint('Speech recognition error: $error');
             setState(() => _isListening = false);
-          }
-        },
-      );
-      debugPrint('Speech available: $_speechAvailable');
-    } else {
-      debugPrint('Microphone permission denied');
+          },
+          onStatus: (status) {
+            debugPrint('Speech recognition status: $status');
+            if (status == 'done' || status == 'notListening') {
+              setState(() => _isListening = false);
+            }
+          },
+        );
+        debugPrint('Speech available: $_speechAvailable');
+      } else {
+        debugPrint('Microphone permission denied');
+        _speechAvailable = false;
+      }
+    } catch (e) {
+      debugPrint('Error initializing speech (likely missing plugin): $e');
       _speechAvailable = false;
     }
     setState(() {});
@@ -192,61 +199,66 @@ class _ChatScreenState extends State<ChatScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          // Menu button
-          IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              _scaffoldKey.currentState?.openDrawer();
-            },
-          ),
-          const SizedBox(width: 8),
-          // Logo
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.favorite, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 12),
-          // Title
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SilverAgent',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          children: [
+            // Back button
+            if (Navigator.canPop(context) || !context.watch<ChatProvider>().isNewConversation)
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22),
+                color: Colors.black87,
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  } else {
+                    context.read<ChatProvider>().startNewConversation();
+                  }
+                },
+              ),
+            
+            // Centered Title
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'SilverAgent',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: 20,
+                    ),
                   ),
-                ),
-                Text(
-                  'Healthcare Helper',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.black54,
+                  Text(
+                    'Healthcare Helper',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          // Profile button
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-              Navigator.pushNamed(context, '/profile');
-            },
-          ),
-        ],
+            
+            // Profile button
+            IconButton(
+              icon: CircleAvatar(
+                radius: 18,
+                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                child: Icon(Icons.person_rounded, size: 20, color: theme.colorScheme.primary),
+              ),
+              onPressed: () => Navigator.pushNamed(context, '/profile'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -255,17 +267,18 @@ class _ChatScreenState extends State<ChatScreen> {
     final theme = Theme.of(context);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      // Add extra bottom padding to avoid floating input covering content
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 140),
       child: Column(
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
           // Logo
           Container(
-            width: 80,
-            height: 80,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
               color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
                   color: theme.colorScheme.primary.withValues(alpha: 0.3),
@@ -274,37 +287,37 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ],
             ),
-            child: const Icon(Icons.favorite, color: Colors.white, size: 40),
+            child: const Icon(Icons.favorite, color: Colors.white, size: 36),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           // Greeting
           Text(
             'Hello ${chatProvider.medicalHistory?.name ?? "there"}! 👋',
-            style: theme.textTheme.displaySmall,
+            style: theme.textTheme.displaySmall?.copyWith(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1A1A1A),
+            ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             "I'm your SilverAgent helper. I can help you book doctor appointments easily.",
-            style: theme.textTheme.bodyLarge?.copyWith(color: Colors.black54),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: Colors.grey.shade600,
+              height: 1.5,
+              fontSize: 16,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
-          // Features
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildFeatureIcon(Icons.mic, 'Speak to me'),
-              _buildFeatureIcon(Icons.message, 'Easy booking'),
-              _buildFeatureIcon(Icons.people, 'Family notified'),
-            ],
-          ),
-          const SizedBox(height: 32),
+          
           // Section title
           Text(
             'What do you need help with today?',
             style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1A1A1A),
             ),
           ),
           const SizedBox(height: 16),
@@ -321,46 +334,23 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildFeatureIcon(IconData icon, String label) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.secondary,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: theme.colorScheme.primary),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: Colors.black54,
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
+
 
   Widget _buildInputArea(BuildContext context, ThemeData theme) {
     final chatProvider = context.watch<ChatProvider>();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withValues(alpha: 0),
+            Colors.white,
+          ],
+          stops: const [0.0, 0.3],
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -368,121 +358,185 @@ class _ChatScreenState extends State<ChatScreen> {
           // Listening indicator
           if (_isListening)
             Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(20),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.error.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.error),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Text(
                     _currentTranscript.isEmpty
-                        ? 'Listening... Speak now'
+                        ? 'Listening...'
                         : '"$_currentTranscript"',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.red.shade700,
-                      fontWeight: FontWeight.w500,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.error,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
             ),
-          // Input row
-          Row(
-            children: [
-              // Voice button
-              Material(
-                color: _isListening
-                    ? Colors.red
-                    : theme.colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  onTap: chatProvider.isLoading ? null : _toggleListening,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 56,
-                    height: 56,
-                    alignment: Alignment.center,
-                    child: Icon(
-                      _isListening ? Icons.mic_off : Icons.mic,
-                      color: _isListening
-                          ? Colors.white
-                          : theme.colorScheme.primary,
-                      size: 24,
-                    ),
-                  ),
+
+          // Floating Input Island
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(40),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-              const SizedBox(width: 12),
-              // Input field
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondary,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _textController,
-                          enabled: !chatProvider.isLoading,
-                          maxLines: null,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _sendMessage(),
-                          decoration: InputDecoration(
-                            hintText: _isListening
-                                ? 'Listening...'
-                                : 'Type or tap mic to speak...',
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 16,
+              ],
+            ),
+            child: _isKeyboardVisible 
+              ? // Text Input Mode
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => setState(() => _isKeyboardVisible = false),
+                      icon: const Icon(Icons.mic_rounded),
+                      color: theme.colorScheme.primary,
+                      style: IconButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        decoration: InputDecoration(
+                          hintText: 'Type your message...',
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                          hintStyle: TextStyle(color: Colors.grey.shade400),
+                        ),
+                        textCapitalization: TextCapitalization.sentences,
+                        onSubmitted: (_) => _sendMessage(),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _sendMessage,
+                      icon: const Icon(Icons.send_rounded),
+                      color: Colors.white,
+                      style: IconButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                  ],
+                )
+              : // Voice Input Mode
+                Row(
+                  children: [
+                    // Huge Voice Button (Floating)
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: chatProvider.isLoading ? null : _toggleListening,
+                        borderRadius: BorderRadius.circular(32),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: _isListening
+                                  ? [const Color(0xFFFF5252), const Color(0xFFD32F2F)]
+                                  : [theme.colorScheme.primary, const Color(0xFF00695C)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: (_isListening ? theme.colorScheme.error : theme.colorScheme.primary).withValues(alpha: 0.4),
+                                blurRadius: 16,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            _isListening ? Icons.stop_rounded : Icons.mic_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    
+                    // Text prompt
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _isListening ? 'Listening...' : 'Tap to Speak',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1A1A1A),
                             ),
                           ),
-                          style: theme.textTheme.bodyLarge,
-                        ),
+                          Text(
+                            'or type your request',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
                       ),
-                      // Send button
-                      IconButton(
-                        onPressed:
-                            _textController.text.trim().isEmpty ||
-                                chatProvider.isLoading
-                            ? null
-                            : _sendMessage,
-                        icon: Icon(
-                          Icons.send,
-                          color: _textController.text.trim().isEmpty
-                              ? Colors.grey
-                              : theme.colorScheme.primary,
-                        ),
+                    ),
+
+                    // Keyboard Button
+                    IconButton(
+                      onPressed: () => setState(() => _isKeyboardVisible = true),
+                      icon: const Icon(Icons.keyboard_alt_rounded),
+                      color: Colors.grey.shade600,
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.grey.shade50,
+                        padding: const EdgeInsets.all(12),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                 ),
+          ),
+          
+          if (_speechAvailable && !_isKeyboardVisible) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Try saying: "Book appointment at SGH"',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: Colors.grey.shade400,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Hint text
-          Text(
-            _speechAvailable
-                ? 'Tap mic and say: "Book SGH appointment next week"'
-                : 'Voice not supported - type your message',
-            style: theme.textTheme.labelSmall?.copyWith(color: Colors.black45),
-            textAlign: TextAlign.center,
-          ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ],
       ),
     );
