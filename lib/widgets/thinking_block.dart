@@ -7,11 +7,13 @@ import '../main.dart';
 class ThinkingBlock extends StatelessWidget {
   final ThinkingData thinking;
   final VoidCallback? onToggle;
+  final bool isStreaming;
 
   const ThinkingBlock({
     super.key,
     required this.thinking,
     this.onToggle,
+    this.isStreaming = false,
   });
 
   @override
@@ -59,15 +61,30 @@ class ThinkingBlock extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Thinking',
-                          style: TextStyle(
-                            fontSize: 18 * s,
-                            color: Colors.purple.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              'Thinking',
+                              style: TextStyle(
+                                fontSize: 18 * s,
+                                color: Colors.purple.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (isStreaming) ...[
+                              SizedBox(width: 8 * s),
+                              SizedBox(
+                                width: 14 * s,
+                                height: 14 * s,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.purple.shade400,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                        if (!thinking.isExpanded)
+                        if (!thinking.isExpanded && thinking.content.isNotEmpty)
                           Text(
                             _getPreview(),
                             style: TextStyle(

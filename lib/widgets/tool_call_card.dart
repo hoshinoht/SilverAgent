@@ -280,6 +280,10 @@ class ToolCallCard extends StatelessWidget {
           if (isError && toolCall.error != null)
             _buildErrorSection(context, theme),
 
+          // Declined hint
+          if (toolCall.status == ToolCallStatus.declined)
+            _buildDeclinedHint(context, theme),
+
           // Action buttons (only if pending)
           if (isPending)
             _buildActionButtons(context, theme),
@@ -452,6 +456,34 @@ class ToolCallCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16 * s,
                 color: Colors.red.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeclinedHint(BuildContext context, ThemeData theme) {
+    final s = context.scale;
+    return Container(
+      margin: EdgeInsets.fromLTRB(20 * s, 0, 20 * s, 20 * s),
+      padding: EdgeInsets.all(16 * s),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12 * s),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.edit, color: Colors.grey.shade600, size: 20 * s),
+          SizedBox(width: 10 * s),
+          Expanded(
+            child: Text(
+              'Tell me what you\'d like instead',
+              style: TextStyle(
+                fontSize: 15 * s,
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
               ),
             ),
           ),

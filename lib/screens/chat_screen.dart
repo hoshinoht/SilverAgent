@@ -342,8 +342,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildInputArea(BuildContext context, ThemeData theme) {
     final chatProvider = context.watch<ChatProvider>();
+    // Allow input when there's a pending decline (user needs to respond)
     final isDisabled = chatProvider.isLoading || chatProvider.hasPendingToolCall;
+    final hasPendingDecline = chatProvider.hasPendingDecline;
     final s = context.scale;
+
+    // Determine hint text
+    String hintText;
+    if (hasPendingDecline) {
+      hintText = 'What would you like instead?';
+    } else if (isDisabled) {
+      hintText = chatProvider.hasPendingToolCall
+          ? 'Respond to tool call above...'
+          : 'Waiting for response...';
+    } else {
+      hintText = 'Type your message...';
+    }
 
     return Container(
       padding: EdgeInsets.fromLTRB(16 * s, 12 * s, 16 * s, 24 * s),
@@ -373,11 +387,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 enabled: !isDisabled,
                 style: TextStyle(fontSize: 16 * s),
                 decoration: InputDecoration(
-                  hintText: isDisabled
-                      ? (chatProvider.hasPendingToolCall
-                          ? 'Respond to tool call above...'
-                          : 'Waiting for response...')
-                      : 'Type your message...',
+                  hintText: hintText,
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 20 * s,

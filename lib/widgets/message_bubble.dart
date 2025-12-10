@@ -35,6 +35,7 @@ class MessageBubble extends StatelessWidget {
 
     return ThinkingBlock(
       thinking: message.metadata!.thinking!,
+      isStreaming: message.isStreaming,
       onToggle: () {
         context.read<ChatProvider>().toggleThinkingExpanded(message.id);
       },
@@ -104,12 +105,15 @@ class MessageBubble extends StatelessWidget {
             size: 20 * s,
           ),
           SizedBox(width: 10 * s),
-          Text(
-            message.content,
-            style: TextStyle(
-              fontSize: 16 * s,
-              color: Colors.grey.shade500,
-              fontStyle: FontStyle.italic,
+          Flexible(
+            child: Text(
+              message.content,
+              style: TextStyle(
+                fontSize: 16 * s,
+                color: Colors.grey.shade500,
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
         ],

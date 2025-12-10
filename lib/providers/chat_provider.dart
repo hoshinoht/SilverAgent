@@ -29,6 +29,9 @@ class ChatProvider with ChangeNotifier {
   ToolCallData? _pendingToolCall;
   String? _pendingToolCallMessageId;
 
+  // Pending decline context - to be sent with user's next message
+  String? _pendingDeclineContext;
+
   // Getters
   List<Conversation> get conversations => List.unmodifiable(_conversations);
   String? get activeConversationId => _activeConversationId;
@@ -38,6 +41,7 @@ class ChatProvider with ChangeNotifier {
   String? get connectionError => _connectionError;
   bool get servicesInitialized => _servicesInitialized;
   bool get hasPendingToolCall => _pendingToolCall != null;
+  bool get hasPendingDecline => _pendingDeclineContext != null;
   bool get isNewConversation =>
       _messages.length <= 1 && _activeConversationId == null;
 
@@ -132,6 +136,7 @@ class ChatProvider with ChangeNotifier {
     _conversationHistory.clear();
     _pendingToolCall = null;
     _pendingToolCallMessageId = null;
+    _pendingDeclineContext = null;
     notifyListeners();
   }
 
@@ -173,7 +178,17 @@ class ChatProvider with ChangeNotifier {
     );
 
     _messages.add(userMessage);
-    _conversationHistory.add({'role': 'user', 'content': content});
+
+    // If there's a pending decline, include it with the user's message
+    if (_pendingDeclineContext != null) {
+      // Combine decline context with user's message
+      final combinedContent = '$_pendingDeclineContext\n\nUser says: $content';
+      _conversationHistory.add({'role': 'user', 'content': combinedContent});
+      _pendingDeclineContext = null;
+    } else {
+      _conversationHistory.add({'role': 'user', 'content': content});
+    }
+
     _isLoading = true;
     notifyListeners();
 
@@ -205,7 +220,6 @@ class ChatProvider with ChangeNotifier {
     bool isInStrategy = false;
     bool thinkingMessageAdded = false;
     final rawBuffer = StringBuffer();
-    final strategyBuffer = StringBuffer();
 
     try {
       await for (final chunk in _llamaService.streamChatCompletion(_conversationHistory)) {
@@ -220,12 +234,13 @@ class ChatProvider with ChangeNotifier {
           if (!thinkingMessageAdded) {
             _messages.add(Message(
               id: thinkingMessageId,
-              content: 'Analyzing your request...',
+              content: '',
               role: 'assistant',
               timestamp: DateTime.now(),
               type: MessageType.thinking,
+              isStreaming: true,
               metadata: MessageMetadata(
-                thinking: ThinkingData(content: 'Thinking...'),
+                thinking: ThinkingData(content: ''),
               ),
             ));
             thinkingMessageAdded = true;
@@ -233,27 +248,57 @@ class ChatProvider with ChangeNotifier {
           }
         }
 
-        // Check if strategy block is complete
-        if (isInStrategy && currentRaw.contains('</strategy>')) {
-          isInStrategy = false;
+        // Stream thinking content while inside strategy block
+        if (isInStrategy && thinkingMessageAdded) {
+          // Extract content after <strategy> tag
+          final strategyStart = currentRaw.indexOf('<strategy>');
+          if (strategyStart != -1) {
+            var thinkingContent = currentRaw.substring(strategyStart + 10); // After '<strategy>'
 
-          // Extract strategy content
-          final strategyMatch = RegExp(r'<strategy>([\s\S]*?)</strategy>').firstMatch(currentRaw);
-          if (strategyMatch != null) {
-            strategyBuffer.clear();
-            strategyBuffer.write(strategyMatch.group(1)?.trim() ?? '');
+            // Remove closing tag if present
+            final endTagIndex = thinkingContent.indexOf('</strategy>');
+            if (endTagIndex != -1) {
+              thinkingContent = thinkingContent.substring(0, endTagIndex);
+            }
+            thinkingContent = thinkingContent.trim();
 
-            // Update thinking message with actual content
+            // Update thinking message, preserving isExpanded state
             final thinkingIndex = _messages.indexWhere((m) => m.id == thinkingMessageId);
             if (thinkingIndex != -1) {
+              final existingExpanded = _messages[thinkingIndex].metadata?.thinking?.isExpanded ?? false;
               _messages[thinkingIndex] = _messages[thinkingIndex].copyWith(
-                content: strategyBuffer.toString(),
+                content: thinkingContent,
                 metadata: MessageMetadata(
-                  thinking: ThinkingData(content: strategyBuffer.toString()),
+                  thinking: ThinkingData(
+                    content: thinkingContent,
+                    isExpanded: existingExpanded,
+                  ),
                 ),
               );
               notifyListeners();
             }
+          }
+        }
+
+        // Check if strategy block is complete
+        if (isInStrategy && currentRaw.contains('</strategy>')) {
+          isInStrategy = false;
+
+          // Mark thinking as no longer streaming
+          final thinkingIndex = _messages.indexWhere((m) => m.id == thinkingMessageId);
+          if (thinkingIndex != -1) {
+            final existingExpanded = _messages[thinkingIndex].metadata?.thinking?.isExpanded ?? false;
+            final existingContent = _messages[thinkingIndex].metadata?.thinking?.content ?? '';
+            _messages[thinkingIndex] = _messages[thinkingIndex].copyWith(
+              isStreaming: false,
+              metadata: MessageMetadata(
+                thinking: ThinkingData(
+                  content: existingContent,
+                  isExpanded: existingExpanded,
+                ),
+              ),
+            );
+            notifyListeners();
           }
         }
 
@@ -423,44 +468,26 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
-  /// Decline a pending tool call
+  /// Decline a pending tool call - waits for user to provide alternative instructions
   Future<void> declineToolCall() async {
     if (_pendingToolCall == null) return;
 
     final toolCall = _pendingToolCall!;
     final messageId = _pendingToolCallMessageId;
 
-    // Update tool call status
+    // Update tool call status (the tool card will show declined state)
     toolCall.status = ToolCallStatus.declined;
     _updateToolCallMessage(messageId!, toolCall);
 
-    // Add decline message
-    final declineContent = ResponseParser.formatDeclineMessage(toolCall.name);
-    _messages.add(Message(
-      id: const Uuid().v4(),
-      content: 'Tool call declined',
-      role: 'system',
-      timestamp: DateTime.now(),
-      type: MessageType.systemMessage,
-      metadata: MessageMetadata(systemMessageType: 'tool_declined'),
-    ));
-
-    // Add to conversation history so LLM knows
-    _conversationHistory.add({
-      'role': 'user',
-      'content': declineContent,
-    });
+    // Store decline context to be sent with user's next message
+    _pendingDeclineContext = ResponseParser.formatDeclineMessage(toolCall.name);
 
     // Clear pending tool call
     _pendingToolCall = null;
     _pendingToolCallMessageId = null;
 
     notifyListeners();
-
-    // Auto-trigger next LLM turn
-    _isLoading = true;
-    notifyListeners();
-    await _getLlmResponse();
+    // Don't auto-trigger LLM - wait for user's input
   }
 
   /// Auto-execute a tool call (for auto-approved tools like weather)
