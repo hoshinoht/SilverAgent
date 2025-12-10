@@ -349,6 +349,13 @@ class ChatProvider with ChangeNotifier {
       final segments = ResponseParser.parse(fullResponse);
       final parsedMessages = ResponseParser.toMessages(segments);
 
+      // Add assistant response to conversation history BEFORE processing tool calls
+      // This ensures the model sees its own response when auto-execute triggers recursively
+      final plainText = ResponseParser.extractPlainText(fullResponse);
+      if (plainText.isNotEmpty || ResponseParser.hasToolCall(fullResponse)) {
+        _conversationHistory.add({'role': 'assistant', 'content': fullResponse});
+      }
+
       // Add parsed messages to chat
       for (final msg in parsedMessages) {
         _messages.add(msg);
@@ -368,12 +375,6 @@ class ChatProvider with ChangeNotifier {
             _pendingToolCallMessageId = msg.id;
           }
         }
-      }
-
-      // Add assistant response to conversation history
-      final plainText = ResponseParser.extractPlainText(fullResponse);
-      if (plainText.isNotEmpty || ResponseParser.hasToolCall(fullResponse)) {
-        _conversationHistory.add({'role': 'assistant', 'content': fullResponse});
       }
 
       _updateConversation();

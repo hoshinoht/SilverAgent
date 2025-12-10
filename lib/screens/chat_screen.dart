@@ -2,6 +2,7 @@
 // Features: messages list, keyboard input, tool call cards, thinking blocks
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/message_bubble.dart';
@@ -24,6 +25,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _focusNode.addListener(() => setState(() {}));
   }
 
   void _scrollToBottom() {
@@ -140,75 +142,127 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildHeader(BuildContext context, ThemeData theme) {
     final s = context.scale;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16 * s, vertical: 12 * s),
+      padding: EdgeInsets.symmetric(horizontal: 8 * s, vertical: 8 * s),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10 * s,
-            offset: Offset(0, 2 * s),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey.shade100,
+            width: 1,
           ),
-        ],
+        ),
       ),
       child: Row(
         children: [
-          // Menu button for history drawer
-          IconButton(
-            icon: Icon(Icons.menu_rounded, size: 24 * s),
-            color: Colors.black87,
-            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          // Menu button - modern pill style
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12 * s),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.menu_rounded, size: 22 * s),
+              color: Colors.grey.shade700,
+              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              splashRadius: 24 * s,
+            ),
           ),
+
+          SizedBox(width: 4 * s),
 
           // Back button (when in conversation)
           Consumer<ChatProvider>(
             builder: (context, provider, _) {
               if (!provider.isNewConversation) {
-                return IconButton(
-                  icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20 * s),
-                  color: Colors.black87,
-                  onPressed: () => provider.startNewConversation(),
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12 * s),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_back_rounded, size: 22 * s),
+                    color: Colors.grey.shade700,
+                    onPressed: () => provider.startNewConversation(),
+                    splashRadius: 24 * s,
+                  ),
                 );
               }
               return const SizedBox.shrink();
             },
           ),
 
-          // Centered Title
+          // Centered Title with logo
           Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'SilverAgent',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1A1A1A),
-                    fontSize: 20 * s,
+                Container(
+                  width: 32 * s,
+                  height: 32 * s,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary,
+                        const Color(0xFF00695C),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(10 * s),
+                  ),
+                  child: Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 18 * s,
                   ),
                 ),
+                SizedBox(width: 10 * s),
                 Text(
-                  'Singapore Super App',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.5,
-                    fontSize: 12 * s,
+                  'SilverAgent',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1A1A1A),
+                    fontSize: 18 * s,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ],
             ),
           ),
 
-          // Connection indicator
+          // Connection indicator - modern style
           Consumer<ChatProvider>(
             builder: (context, provider, _) {
+              final isConnected = provider.isConnected;
               return Container(
-                padding: EdgeInsets.all(8 * s),
-                child: Icon(
-                  provider.isConnected ? Icons.wifi : Icons.wifi_off,
-                  color: provider.isConnected ? Colors.green : Colors.orange,
-                  size: 20 * s,
+                padding: EdgeInsets.symmetric(horizontal: 12 * s, vertical: 6 * s),
+                decoration: BoxDecoration(
+                  color: isConnected
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20 * s),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8 * s,
+                      height: 8 * s,
+                      decoration: BoxDecoration(
+                        color: isConnected ? Colors.green : Colors.orange,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    SizedBox(width: 6 * s),
+                    Text(
+                      isConnected ? 'Online' : 'Offline',
+                      style: TextStyle(
+                        fontSize: 12 * s,
+                        fontWeight: FontWeight.w600,
+                        color: isConnected ? Colors.green.shade700 : Colors.orange.shade700,
+                      ),
+                    ),
+                  ],
                 ),
               );
             },
@@ -265,87 +319,153 @@ class _ChatScreenState extends State<ChatScreen> {
     final theme = Theme.of(context);
     final s = context.scale;
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(24 * s, 24 * s, 24 * s, 100 * s),
-      child: Column(
-        children: [
-          SizedBox(height: 20 * s),
-          // Logo
-          Container(
-            width: 80 * s,
-            height: 80 * s,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  theme.colorScheme.primary,
-                  theme.colorScheme.primary.withValues(alpha: 0.7),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24 * s),
-              boxShadow: [
-                BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                  blurRadius: 16 * s,
-                  offset: Offset(0, 6 * s),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            theme.colorScheme.surface,
+            theme.colorScheme.surface,
+            theme.colorScheme.primary.withValues(alpha: 0.03),
+          ],
+        ),
+      ),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(24 * s, 32 * s, 24 * s, 120 * s),
+        child: Column(
+          children: [
+            SizedBox(height: 24 * s),
+            // Modern animated-style logo with glow
+            Container(
+              padding: EdgeInsets.all(4 * s),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primary.withValues(alpha: 0.6),
+                    const Color(0xFF00695C),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                    blurRadius: 32 * s,
+                    spreadRadius: 2 * s,
+                  ),
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                    blurRadius: 64 * s,
+                    spreadRadius: 8 * s,
+                  ),
+                ],
+              ),
+              child: Container(
+                width: 88 * s,
+                height: 88 * s,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.15),
+                ),
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: Colors.white,
+                  size: 44 * s,
+                ),
+              ),
+            ),
+            SizedBox(height: 32 * s),
+            // Modern greeting with gradient text effect
+            ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [
+                  const Color(0xFF1A1A1A),
+                  theme.colorScheme.primary.withValues(alpha: 0.8),
+                ],
+              ).createShader(bounds),
+              child: Text(
+                'SilverAgent',
+                style: TextStyle(
+                  fontSize: 36 * s,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            SizedBox(height: 8 * s),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16 * s, vertical: 6 * s),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20 * s),
+              ),
+              child: Text(
+                'Your Singapore Super Assistant',
+                style: TextStyle(
+                  fontSize: 14 * s,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            SizedBox(height: 20 * s),
+            Text(
+              'I can help you book Grab rides, manage healthcare appointments, check weather, and more.',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                height: 1.6,
+                fontSize: 16 * s,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 48 * s),
+
+            // Section title with line accents
+            Row(
+              children: [
+                Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16 * s),
+                  child: Text(
+                    'QUICK ACTIONS',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade500,
+                      fontSize: 13 * s,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
               ],
             ),
-            child: Icon(Icons.smart_toy, color: Colors.white, size: 40 * s),
-          ),
-          SizedBox(height: 24 * s),
-          // Greeting
-          Text(
-            'Hello! I\'m SilverAgent',
-            style: theme.textTheme.displaySmall?.copyWith(
-              fontSize: 28 * s,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF1A1A1A),
+            SizedBox(height: 24 * s),
+            // Quick actions
+            QuickActionsWidget(
+              actions: chatProvider.quickActions,
+              onActionClick: (prompt) {
+                chatProvider.sendMessage(prompt);
+                _scrollToBottom();
+              },
             ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 8 * s),
-          Text(
-            'Your Singapore super assistant. I can help you with Grab rides, healthcare appointments, weather checks, and more!',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: Colors.grey.shade600,
-              height: 1.5,
-              fontSize: 16 * s,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 40 * s),
-
-          // Section title
-          Text(
-            'Quick Actions',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF1A1A1A),
-              fontSize: 18 * s,
-            ),
-          ),
-          SizedBox(height: 16 * s),
-          // Quick actions
-          QuickActionsWidget(
-            actions: chatProvider.quickActions,
-            onActionClick: (prompt) {
-              chatProvider.sendMessage(prompt);
-              _scrollToBottom();
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildInputArea(BuildContext context, ThemeData theme) {
     final chatProvider = context.watch<ChatProvider>();
-    // Allow input when there's a pending decline (user needs to respond)
     final isDisabled = chatProvider.isLoading || chatProvider.hasPendingToolCall;
     final hasPendingDecline = chatProvider.hasPendingDecline;
     final s = context.scale;
+    final hasText = _textController.text.trim().isNotEmpty;
 
     // Determine hint text
     String hintText;
@@ -356,86 +476,142 @@ class _ChatScreenState extends State<ChatScreen> {
           ? 'Respond to tool call above...'
           : 'Waiting for response...';
     } else {
-      hintText = 'Type your message...';
+      hintText = 'Message SilverAgent...';
     }
 
     return Container(
-      padding: EdgeInsets.fromLTRB(16 * s, 12 * s, 16 * s, 24 * s),
+      padding: EdgeInsets.fromLTRB(16 * s, 8 * s, 16 * s, 20 * s),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10 * s,
-            offset: Offset(0, -2 * s),
-          ),
-        ],
+        color: theme.colorScheme.surface,
       ),
-      child: Row(
-        children: [
-          // Text input
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(24 * s),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: TextField(
-                controller: _textController,
-                focusNode: _focusNode,
-                enabled: !isDisabled,
-                style: TextStyle(fontSize: 16 * s),
-                decoration: InputDecoration(
-                  hintText: hintText,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 20 * s,
-                    vertical: 14 * s,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28 * s),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16 * s,
+              offset: Offset(0, 2 * s),
+            ),
+            BoxShadow(
+              color: theme.colorScheme.primary.withValues(alpha: 0.05),
+              blurRadius: 24 * s,
+              spreadRadius: -4 * s,
+            ),
+          ],
+          border: Border.all(
+            color: _focusNode.hasFocus
+                ? theme.colorScheme.primary.withValues(alpha: 0.3)
+                : Colors.grey.shade200,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // Text input
+            Expanded(
+              child: Focus(
+                onKeyEvent: (node, event) {
+                  // Send on Enter (without Shift), allow Shift+Enter for new line
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.enter &&
+                      !HardwareKeyboard.instance.isShiftPressed) {
+                    if (!isDisabled && hasText) {
+                      _sendMessage();
+                    }
+                    return KeyEventResult.handled; // Prevent newline
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: TextField(
+                  controller: _textController,
+                  focusNode: _focusNode,
+                  enabled: !isDisabled,
+                  style: TextStyle(
+                    fontSize: 16 * s,
+                    color: const Color(0xFF1A1A1A),
+                    height: 1.4,
                   ),
-                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16 * s),
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.fromLTRB(20 * s, 16 * s, 8 * s, 16 * s),
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 16 * s,
+                    ),
+                  ),
+                  textCapitalization: TextCapitalization.sentences,
+                  onChanged: (_) => setState(() {}), // Rebuild to update button state
+                  maxLines: 4,
+                  minLines: 1,
                 ),
-                textCapitalization: TextCapitalization.sentences,
-                onSubmitted: (_) => _sendMessage(),
-                maxLines: null,
-                textInputAction: TextInputAction.send,
               ),
             ),
-          ),
-          SizedBox(width: 12 * s),
-          // Send button
-          Material(
-            color: isDisabled
-                ? Colors.grey.shade300
-                : theme.colorScheme.primary,
-            borderRadius: BorderRadius.circular(24 * s),
-            child: InkWell(
-              onTap: isDisabled ? null : _sendMessage,
-              borderRadius: BorderRadius.circular(24 * s),
-              child: Container(
-                width: 48 * s,
-                height: 48 * s,
-                alignment: Alignment.center,
-                child: chatProvider.isLoading
-                    ? SizedBox(
-                        width: 20 * s,
-                        height: 20 * s,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2 * s,
-                          valueColor: AlwaysStoppedAnimation(
-                            isDisabled ? Colors.grey : Colors.white,
-                          ),
+            // Send button
+            Padding(
+              padding: EdgeInsets.only(right: 6 * s, bottom: 6 * s),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                width: 44 * s,
+                height: 44 * s,
+                decoration: BoxDecoration(
+                  gradient: (isDisabled || !hasText)
+                      ? null
+                      : LinearGradient(
+                          colors: [
+                            theme.colorScheme.primary,
+                            const Color(0xFF00695C),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                      )
-                    : Icon(
-                        Icons.send_rounded,
-                        color: isDisabled ? Colors.grey.shade500 : Colors.white,
-                        size: 22 * s,
-                      ),
+                  color: (isDisabled || !hasText) ? Colors.grey.shade100 : null,
+                  shape: BoxShape.circle,
+                  boxShadow: (isDisabled || !hasText)
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 8 * s,
+                            offset: Offset(0, 2 * s),
+                          ),
+                        ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: (isDisabled || !hasText) ? null : _sendMessage,
+                    borderRadius: BorderRadius.circular(22 * s),
+                    child: Center(
+                      child: chatProvider.isLoading
+                          ? SizedBox(
+                              width: 20 * s,
+                              height: 20 * s,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5 * s,
+                                valueColor: AlwaysStoppedAnimation(
+                                  theme.colorScheme.primary.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              Icons.arrow_upward_rounded,
+                              color: (isDisabled || !hasText)
+                                  ? Colors.grey.shade400
+                                  : Colors.white,
+                              size: 24 * s,
+                            ),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
