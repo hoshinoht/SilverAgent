@@ -33,25 +33,31 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _initSpeech() async {
-    // Request microphone permission first
-    final status = await Permission.microphone.request();
+    try {
+      // Request microphone permission first
+      // Wrap in try-catch for Linux/Desktop where plugin might be missing
+      final status = await Permission.microphone.request();
 
-    if (status.isGranted) {
-      _speechAvailable = await _speech.initialize(
-        onError: (error) {
-          print('Speech recognition error: $error');
-          setState(() => _isListening = false);
-        },
-        onStatus: (status) {
-          print('Speech recognition status: $status');
-          if (status == 'done' || status == 'notListening') {
+      if (status.isGranted) {
+        _speechAvailable = await _speech.initialize(
+          onError: (error) {
+            print('Speech recognition error: $error');
             setState(() => _isListening = false);
-          }
-        },
-      );
-      print('Speech available: $_speechAvailable');
-    } else {
-      print('Microphone permission denied');
+          },
+          onStatus: (status) {
+            print('Speech recognition status: $status');
+            if (status == 'done' || status == 'notListening') {
+              setState(() => _isListening = false);
+            }
+          },
+        );
+        print('Speech available: $_speechAvailable');
+      } else {
+        print('Microphone permission denied');
+        _speechAvailable = false;
+      }
+    } catch (e) {
+      print('Error initializing speech (likely missing plugin): $e');
       _speechAvailable = false;
     }
     setState(() {});
@@ -186,67 +192,116 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildHeader(BuildContext context, ThemeData theme) {
+    final chatProvider = context.watch<ChatProvider>();
+    final showBackButton = Navigator.canPop(context) || !chatProvider.isNewConversation;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.9),
+        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
       ),
-      child: Row(
-        children: [
-          // Menu button
-          IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              _scaffoldKey.currentState?.openDrawer();
-            },
-          ),
-          const SizedBox(width: 8),
-          // Logo
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.favorite, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 12),
-          // Title
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SilverAgent',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          children: [
+            // Back button (if can pop or in active conversation)
+            if (showBackButton)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.shade50,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    } else {
+                      chatProvider.startNewConversation();
+                    }
+                  },
                 ),
-                Text(
-                  'Healthcare Helper',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.black54,
+              ),
+            // Menu button
+            if (!showBackButton)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  icon: const Icon(Icons.menu_rounded),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.shade50,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
+                  onPressed: () {
+                    _scaffoldKey.currentState?.openDrawer();
+                  },
                 ),
-              ],
+              ),
+            
+            // Logo & Title
+            Expanded(
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'SilverAgent',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      Text(
+                        'Healthcare Helper',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.grey.shade600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          // Profile button
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-              Navigator.pushNamed(context, '/profile');
-            },
-          ),
-        ],
+            
+            // Profile button
+            IconButton(
+              icon: CircleAvatar(
+                radius: 16,
+                backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+                child: Icon(Icons.person_rounded, size: 20, color: theme.colorScheme.secondary),
+              ),
+              onPressed: () {
+                Navigator.pushNamed(context, '/profile');
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -351,14 +406,14 @@ class _ChatScreenState extends State<ChatScreen> {
     final chatProvider = context.watch<ChatProvider>();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -368,71 +423,78 @@ class _ChatScreenState extends State<ChatScreen> {
           // Listening indicator
           if (_isListening)
             Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(20),
+                color: theme.colorScheme.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: theme.colorScheme.error.withOpacity(0.2)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
+                  SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.error),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Text(
                     _currentTranscript.isEmpty
                         ? 'Listening... Speak now'
                         : '"$_currentTranscript"',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.red.shade700,
-                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.error,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
             ),
+            
           // Input row
           Row(
             children: [
               // Voice button
               Material(
-                color: _isListening
-                    ? Colors.red
-                    : theme.colorScheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.transparent,
                 child: InkWell(
                   onTap: chatProvider.isLoading ? null : _toggleListening,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 56,
-                    height: 56,
+                  borderRadius: BorderRadius.circular(16),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: _isListening
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     alignment: Alignment.center,
                     child: Icon(
-                      _isListening ? Icons.mic_off : Icons.mic,
+                      _isListening ? Icons.mic_off_rounded : Icons.mic_rounded,
                       color: _isListening
                           ? Colors.white
                           : theme.colorScheme.primary,
-                      size: 24,
+                      size: 26,
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
+              
               // Input field
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.secondary,
-                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(color: Colors.transparent),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
                       Expanded(
@@ -445,27 +507,39 @@ class _ChatScreenState extends State<ChatScreen> {
                           decoration: InputDecoration(
                             hintText: _isListening
                                 ? 'Listening...'
-                                : 'Type or tap mic to speak...',
+                                : 'Type a message...',
+                            hintStyle: TextStyle(color: Colors.grey.shade500),
                             border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(
-                              vertical: 16,
+                              horizontal: 20,
+                              vertical: 14,
                             ),
                           ),
                           style: theme.textTheme.bodyLarge,
                         ),
                       ),
                       // Send button
-                      IconButton(
-                        onPressed:
-                            _textController.text.trim().isEmpty ||
-                                chatProvider.isLoading
-                            ? null
-                            : _sendMessage,
-                        icon: Icon(
-                          Icons.send,
-                          color: _textController.text.trim().isEmpty
-                              ? Colors.grey
-                              : theme.colorScheme.primary,
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: IconButton(
+                          onPressed:
+                              _textController.text.trim().isEmpty ||
+                                  chatProvider.isLoading
+                              ? null
+                              : _sendMessage,
+                          icon: Icon(
+                            Icons.send_rounded,
+                            color: _textController.text.trim().isEmpty
+                                ? Colors.grey.shade400
+                                : theme.colorScheme.primary,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: _textController.text.trim().isNotEmpty
+                                ? theme.colorScheme.primary.withOpacity(0.1)
+                                : Colors.transparent,
+                          ),
                         ),
                       ),
                     ],
@@ -474,15 +548,18 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          // Hint text
-          Text(
-            _speechAvailable
-                ? 'Tap mic and say: "Book SGH appointment next week"'
-                : 'Voice not supported - type your message',
-            style: theme.textTheme.labelSmall?.copyWith(color: Colors.black45),
-            textAlign: TextAlign.center,
-          ),
+          
+          if (_speechAvailable) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Tap mic and say: "Book SGH appointment next week"',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: Colors.grey.shade500,
+                fontSize: 10,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ],
       ),
     );

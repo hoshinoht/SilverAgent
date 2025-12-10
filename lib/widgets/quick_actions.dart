@@ -45,23 +45,23 @@ class _QuickActionButton extends StatelessWidget {
   IconData _getIcon(String iconName) {
     switch (iconName) {
       case 'polyclinic':
-        return Icons.business;
+        return Icons.business_rounded;
       case 'singhealth':
-        return Icons.local_hospital;
+        return Icons.local_hospital_rounded;
       case 'nuhs':
-        return Icons.medical_services;
+        return Icons.medical_services_rounded;
       case 'help':
-        return Icons.help_outline;
+        return Icons.support_agent_rounded;
       case 'calendar':
-        return Icons.calendar_today;
+        return Icons.calendar_month_rounded;
       case 'call':
-        return Icons.phone;
+        return Icons.phone_in_talk_rounded;
       case 'smart':
-        return Icons.auto_awesome;
+        return Icons.auto_awesome_rounded;
       case 'doctor':
-        return Icons.person;
+        return Icons.person_rounded;
       default:
-        return Icons.help_outline;
+        return Icons.help_outline_rounded;
     }
   }
 
@@ -73,18 +73,18 @@ class _QuickActionButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade300, width: 2),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.grey.shade100, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: theme.colorScheme.primary.withOpacity(0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -96,21 +96,22 @@ class _QuickActionButton extends StatelessWidget {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.secondary,
-                  borderRadius: BorderRadius.circular(12),
+                  color: theme.colorScheme.primary.withOpacity(0.08),
+                  shape: BoxShape.circle,
                 ),
                 child: Icon(
                   _getIcon(action.icon),
-                  size: 28,
+                  size: 26,
                   color: theme.colorScheme.primary,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               // Label
               Text(
                 action.label,
                 style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF2C2C2C),
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
@@ -121,7 +122,8 @@ class _QuickActionButton extends StatelessWidget {
                 Text(
                   action.sublabel!,
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.black54,
+                    color: Colors.grey.shade600,
+                    fontSize: 11,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,

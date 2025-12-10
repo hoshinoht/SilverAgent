@@ -25,23 +25,31 @@ class MessageBubble extends StatelessWidget {
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: isUser
-              ? theme.colorScheme.primary
-              : theme.colorScheme.secondary,
+          gradient: isUser
+              ? LinearGradient(
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primary.withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isUser ? null : Colors.white,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(isUser ? 20 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 20),
+            topLeft: const Radius.circular(24),
+            topRight: const Radius.circular(24),
+            bottomLeft: Radius.circular(isUser ? 24 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 24),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -61,12 +69,12 @@ class MessageBubble extends StatelessWidget {
             Text(
               message.content,
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: isUser ? Colors.white : Colors.black87,
-                height: 1.4,
+                color: isUser ? Colors.white : const Color(0xFF333333),
+                height: 1.5,
               ),
             ),
 
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
 
             // Status and timestamp
             Row(
@@ -85,8 +93,9 @@ class MessageBubble extends StatelessWidget {
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: isUser
                         ? Colors.white.withOpacity(0.7)
-                        : Colors.black54,
+                        : Colors.grey.shade500,
                     fontSize: 10,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
