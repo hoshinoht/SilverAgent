@@ -1,8 +1,9 @@
-// Quick Actions Widget - Grid of quick action buttons
-// Displays action buttons for common tasks on the welcome screen
+// Quick Actions Widget - Modern grid of quick action buttons
+// Displays large, visually appealing action buttons for common tasks
 
 import 'package:flutter/material.dart';
 import '../models/chat_models.dart';
+import '../main.dart';
 
 class QuickActionsWidget extends StatelessWidget {
   final List<QuickAction> actions;
@@ -16,14 +17,15 @@ class QuickActionsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.scale;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.9,
+        crossAxisSpacing: 16 * s,
+        mainAxisSpacing: 16 * s,
+        childAspectRatio: 1.1,
       ),
       itemCount: actions.length,
       itemBuilder: (context, index) {
@@ -36,110 +38,144 @@ class QuickActionsWidget extends StatelessWidget {
   }
 }
 
-class _QuickActionButton extends StatelessWidget {
+class _QuickActionButton extends StatefulWidget {
   final QuickAction action;
   final VoidCallback onTap;
 
   const _QuickActionButton({required this.action, required this.onTap});
 
+  @override
+  State<_QuickActionButton> createState() => _QuickActionButtonState();
+}
+
+class _QuickActionButtonState extends State<_QuickActionButton> {
+  bool _isPressed = false;
+
   IconData _getIcon(String iconName) {
     switch (iconName) {
-      case 'polyclinic':
-        return Icons.business_rounded;
-      case 'singhealth':
-        return Icons.local_hospital_rounded;
-      case 'nuhs':
+      case 'directions_car':
+        return Icons.local_taxi_rounded;
+      case 'local_hospital':
         return Icons.medical_services_rounded;
-      case 'help':
+      case 'wb_sunny':
+        return Icons.cloud_rounded;
+      case 'help_outline':
         return Icons.support_agent_rounded;
-      case 'calendar':
-        return Icons.calendar_month_rounded;
-      case 'call':
-        return Icons.phone_in_talk_rounded;
-      case 'smart':
-        return Icons.auto_awesome_rounded;
-      case 'doctor':
-        return Icons.person_rounded;
       default:
         return Icons.help_outline_rounded;
     }
   }
 
+  List<Color> _getGradientColors(String iconName) {
+    switch (iconName) {
+      case 'directions_car':
+        return [const Color(0xFF00B14F), const Color(0xFF00D160)];
+      case 'local_hospital':
+        return [const Color(0xFFE53935), const Color(0xFFFF5252)];
+      case 'wb_sunny':
+        return [const Color(0xFFFF9800), const Color(0xFFFFB74D)];
+      case 'help_outline':
+        return [const Color(0xFF5C6BC0), const Color(0xFF7986CB)];
+      default:
+        return [const Color(0xFF00B14F), const Color(0xFF00D160)];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final s = context.scale;
+    final gradientColors = _getGradientColors(widget.action.icon);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        transform: _isPressed
+            ? (Matrix4.identity()..setEntry(0, 0, 0.95)..setEntry(1, 1, 0.95)..setEntry(2, 2, 0.95))
+            : Matrix4.identity(),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Icon container
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      theme.colorScheme.primary.withValues(alpha: 0.1),
-                      theme.colorScheme.primary.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(24 * s),
+          boxShadow: [
+            BoxShadow(
+              color: gradientColors[0].withValues(alpha: 0.4),
+              blurRadius: _isPressed ? 8 * s : 16 * s,
+              offset: Offset(0, _isPressed ? 4 * s : 8 * s),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Background pattern
+            Positioned(
+              right: -20 * s,
+              bottom: -20 * s,
+              child: Icon(
+                _getIcon(widget.action.icon),
+                size: 120 * s,
+                color: Colors.white.withValues(alpha: 0.15),
+              ),
+            ),
+            // Content
+            Padding(
+              padding: EdgeInsets.all(20 * s),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Icon in rounded square
+                  Container(
+                    width: 56 * s,
+                    height: 56 * s,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(16 * s),
+                    ),
+                    child: Icon(
+                      _getIcon(widget.action.icon),
+                      size: 32 * s,
+                      color: Colors.white,
+                    ),
+                  ),
+                  // Labels
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.action.label,
+                        style: TextStyle(
+                          fontSize: 18 * s,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (widget.action.sublabel != null) ...[
+                        SizedBox(height: 4 * s),
+                        Text(
+                          widget.action.sublabel!,
+                          style: TextStyle(
+                            fontSize: 13 * s,
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _getIcon(action.icon),
-                  size: 30,
-                  color: theme.colorScheme.primary,
-                ),
+                ],
               ),
-              const SizedBox(height: 16),
-              // Label
-              Text(
-                action.label,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF2C2C2C),
-                  fontSize: 15,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (action.sublabel != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  action.sublabel!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade500,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

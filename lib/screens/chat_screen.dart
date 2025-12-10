@@ -1,14 +1,12 @@
-// Chat Screen - Main screen with chat interface
-// Features: messages list, input field with voice recognition, history drawer
+// Chat Screen - Main chat interface for SilverAgent Super App
+// Features: messages list, keyboard input, tool call cards, thinking blocks
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:permission_handler/permission_handler.dart';
-import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/quick_actions.dart';
+import '../main.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -21,108 +19,24 @@ class _ChatScreenState extends State<ChatScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final stt.SpeechToText _speech = stt.SpeechToText();
-  bool _isListening = false;
-  bool _speechAvailable = false;
-  String _currentTranscript = '';
-  bool _isKeyboardVisible = false;
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    _initSpeech();
-  }
-
-  Future<void> _initSpeech() async {
-    try {
-      // Request microphone permission first
-      // Wrap in try-catch for Linux/Desktop where plugin might be missing
-      final status = await Permission.microphone.request();
-
-      if (status.isGranted) {
-        _speechAvailable = await _speech.initialize(
-          onError: (error) {
-            debugPrint('Speech recognition error: $error');
-            setState(() => _isListening = false);
-          },
-          onStatus: (status) {
-            debugPrint('Speech recognition status: $status');
-            if (status == 'done' || status == 'notListening') {
-              setState(() => _isListening = false);
-            }
-          },
-        );
-        debugPrint('Speech available: $_speechAvailable');
-      } else {
-        debugPrint('Microphone permission denied');
-        _speechAvailable = false;
-      }
-    } catch (e) {
-      debugPrint('Error initializing speech (likely missing plugin): $e');
-      _speechAvailable = false;
-    }
-    setState(() {});
   }
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
       });
-    }
-  }
-
-  Future<void> _toggleListening() async {
-    if (!_speechAvailable) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Speech recognition not available'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
-    if (_isListening) {
-      await _speech.stop();
-      setState(() => _isListening = false);
-    } else {
-      setState(() {
-        _isListening = true;
-        _currentTranscript = '';
-      });
-
-      await _speech.listen(
-        onResult: (result) {
-          setState(() {
-            _currentTranscript = result.recognizedWords;
-            if (result.finalResult) {
-              _textController.text +=
-                  (_textController.text.isNotEmpty ? ' ' : '') +
-                  _currentTranscript;
-              _currentTranscript = '';
-            }
-          });
-        },
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
-        localeId: 'en_SG',
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🎤 Listening... Speak now!'),
-          duration: Duration(seconds: 2),
-          backgroundColor: Colors.green,
-        ),
-      );
     }
   }
 
@@ -140,7 +54,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _textController.dispose();
     _scrollController.dispose();
-    _speech.stop();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -158,6 +72,36 @@ class _ChatScreenState extends State<ChatScreen> {
             // Header
             _buildHeader(context, theme),
 
+            // Connection status banner
+            Consumer<ChatProvider>(
+              builder: (context, provider, _) {
+                if (!provider.servicesInitialized) {
+                  return _buildStatusBanner(
+                    context,
+                    theme,
+                    'Initializing services...',
+                    Colors.blue,
+                    Icons.sync,
+                    isLoading: true,
+                  );
+                }
+                if (!provider.isConnected) {
+                  return _buildStatusBanner(
+                    context,
+                    theme,
+                    'LLM server not connected',
+                    Colors.orange,
+                    Icons.warning_amber,
+                    action: TextButton(
+                      onPressed: () => provider.retryConnection(),
+                      child: const Text('Retry'),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+
             // Messages area
             Expanded(
               child: Consumer<ChatProvider>(
@@ -170,9 +114,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     return _buildWelcomeScreen(context, chatProvider);
                   }
 
+                  final s = context.scale;
                   return ListView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: 16 * s),
                     itemCount: chatProvider.messages.length,
                     itemBuilder: (context, index) {
                       return MessageBubble(
@@ -193,134 +138,195 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildHeader(BuildContext context, ThemeData theme) {
+    final s = context.scale;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16 * s, vertical: 12 * s),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            blurRadius: 10 * s,
+            offset: Offset(0, 2 * s),
           ),
         ],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            // Back button
-            if (Navigator.canPop(context) || !context.watch<ChatProvider>().isNewConversation)
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22),
-                color: Colors.black87,
-                onPressed: () {
-                  if (Navigator.canPop(context)) {
-                    Navigator.pop(context);
-                  } else {
-                    context.read<ChatProvider>().startNewConversation();
-                  }
-                },
+      child: Row(
+        children: [
+          // Menu button for history drawer
+          IconButton(
+            icon: Icon(Icons.menu_rounded, size: 24 * s),
+            color: Colors.black87,
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          ),
+
+          // Back button (when in conversation)
+          Consumer<ChatProvider>(
+            builder: (context, provider, _) {
+              if (!provider.isNewConversation) {
+                return IconButton(
+                  icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20 * s),
+                  color: Colors.black87,
+                  onPressed: () => provider.startNewConversation(),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+
+          // Centered Title
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'SilverAgent',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1A1A1A),
+                    fontSize: 20 * s,
+                  ),
+                ),
+                Text(
+                  'Singapore Super App',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                    fontSize: 12 * s,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Connection indicator
+          Consumer<ChatProvider>(
+            builder: (context, provider, _) {
+              return Container(
+                padding: EdgeInsets.all(8 * s),
+                child: Icon(
+                  provider.isConnected ? Icons.wifi : Icons.wifi_off,
+                  color: provider.isConnected ? Colors.green : Colors.orange,
+                  size: 20 * s,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBanner(
+    BuildContext context,
+    ThemeData theme,
+    String message,
+    Color color,
+    IconData icon, {
+    bool isLoading = false,
+    Widget? action,
+  }) {
+    final s = context.scale;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16 * s, vertical: 10 * s),
+      color: color.withValues(alpha: 0.1),
+      child: Row(
+        children: [
+          if (isLoading)
+            SizedBox(
+              width: 16 * s,
+              height: 16 * s,
+              child: CircularProgressIndicator(
+                strokeWidth: 2 * s,
+                valueColor: AlwaysStoppedAnimation(color),
               ),
-            
-            // Centered Title
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'SilverAgent',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: 20,
-                    ),
-                  ),
-                  Text(
-                    'Healthcare Helper',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
+            )
+          else
+            Icon(icon, color: color, size: 18 * s),
+          SizedBox(width: 12 * s),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w500,
+                fontSize: 14 * s,
               ),
             ),
-            
-            // Profile button
-            IconButton(
-              icon: CircleAvatar(
-                radius: 18,
-                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                child: Icon(Icons.person_rounded, size: 20, color: theme.colorScheme.primary),
-              ),
-              onPressed: () => Navigator.pushNamed(context, '/profile'),
-            ),
-          ],
-        ),
+          ),
+          if (action != null) action,
+        ],
       ),
     );
   }
 
   Widget _buildWelcomeScreen(BuildContext context, ChatProvider chatProvider) {
     final theme = Theme.of(context);
+    final s = context.scale;
 
     return SingleChildScrollView(
-      // Add extra bottom padding to avoid floating input covering content
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 140),
+      padding: EdgeInsets.fromLTRB(24 * s, 24 * s, 24 * s, 100 * s),
       child: Column(
         children: [
-          const SizedBox(height: 10),
+          SizedBox(height: 20 * s),
           // Logo
           Container(
-            width: 72,
-            height: 72,
+            width: 80 * s,
+            height: 80 * s,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.primary,
+                  theme.colorScheme.primary.withValues(alpha: 0.7),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24 * s),
               boxShadow: [
                 BoxShadow(
                   color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+                  blurRadius: 16 * s,
+                  offset: Offset(0, 6 * s),
                 ),
               ],
             ),
-            child: const Icon(Icons.favorite, color: Colors.white, size: 36),
+            child: Icon(Icons.smart_toy, color: Colors.white, size: 40 * s),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 24 * s),
           // Greeting
           Text(
-            'Hello ${chatProvider.medicalHistory?.name ?? "there"}! 👋',
+            'Hello! I\'m SilverAgent',
             style: theme.textTheme.displaySmall?.copyWith(
-              fontSize: 26,
+              fontSize: 28 * s,
               fontWeight: FontWeight.bold,
               color: const Color(0xFF1A1A1A),
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8 * s),
           Text(
-            "I'm your SilverAgent helper. I can help you book doctor appointments easily.",
+            'Your Singapore super assistant. I can help you with Grab rides, healthcare appointments, weather checks, and more!',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: Colors.grey.shade600,
               height: 1.5,
-              fontSize: 16,
+              fontSize: 16 * s,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
-          
+          SizedBox(height: 40 * s),
+
           // Section title
           Text(
-            'What do you need help with today?',
+            'Quick Actions',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               color: const Color(0xFF1A1A1A),
+              fontSize: 18 * s,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16 * s),
           // Quick actions
           QuickActionsWidget(
             actions: chatProvider.quickActions,
@@ -334,209 +340,91 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-
-
   Widget _buildInputArea(BuildContext context, ThemeData theme) {
     final chatProvider = context.watch<ChatProvider>();
+    final isDisabled = chatProvider.isLoading || chatProvider.hasPendingToolCall;
+    final s = context.scale;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+      padding: EdgeInsets.fromLTRB(16 * s, 12 * s, 16 * s, 24 * s),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.white.withValues(alpha: 0),
-            Colors.white,
-          ],
-          stops: const [0.0, 0.3],
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Listening indicator
-          if (_isListening)
-            Container(
-              margin: const EdgeInsets.only(bottom: 24),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.error.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.error),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    _currentTranscript.isEmpty
-                        ? 'Listening...'
-                        : '"$_currentTranscript"',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.error,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Floating Input Island
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: _isKeyboardVisible 
-              ? // Text Input Mode
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => setState(() => _isKeyboardVisible = false),
-                      icon: const Icon(Icons.mic_rounded),
-                      color: theme.colorScheme.primary,
-                      style: IconButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        padding: const EdgeInsets.all(12),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        decoration: InputDecoration(
-                          hintText: 'Type your message...',
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                        ),
-                        textCapitalization: TextCapitalization.sentences,
-                        onSubmitted: (_) => _sendMessage(),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _sendMessage,
-                      icon: const Icon(Icons.send_rounded),
-                      color: Colors.white,
-                      style: IconButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        padding: const EdgeInsets.all(12),
-                      ),
-                    ),
-                  ],
-                )
-              : // Voice Input Mode
-                Row(
-                  children: [
-                    // Huge Voice Button (Floating)
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: chatProvider.isLoading ? null : _toggleListening,
-                        borderRadius: BorderRadius.circular(32),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: _isListening
-                                  ? [const Color(0xFFFF5252), const Color(0xFFD32F2F)]
-                                  : [theme.colorScheme.primary, const Color(0xFF00695C)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: (_isListening ? theme.colorScheme.error : theme.colorScheme.primary).withValues(alpha: 0.4),
-                                blurRadius: 16,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            _isListening ? Icons.stop_rounded : Icons.mic_rounded,
-                            color: Colors.white,
-                            size: 32,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    
-                    // Text prompt
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _isListening ? 'Listening...' : 'Tap to Speak',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1A1A1A),
-                            ),
-                          ),
-                          Text(
-                            'or type your request',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Keyboard Button
-                    IconButton(
-                      onPressed: () => setState(() => _isKeyboardVisible = true),
-                      icon: const Icon(Icons.keyboard_alt_rounded),
-                      color: Colors.grey.shade600,
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.grey.shade50,
-                        padding: const EdgeInsets.all(12),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                ),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10 * s,
+            offset: Offset(0, -2 * s),
           ),
-          
-          if (_speechAvailable && !_isKeyboardVisible) ...[
-            const SizedBox(height: 16),
-            Text(
-              'Try saying: "Book appointment at SGH"',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: Colors.grey.shade400,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
+        ],
+      ),
+      child: Row(
+        children: [
+          // Text input
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(24 * s),
+                border: Border.all(color: Colors.grey.shade200),
               ),
-              textAlign: TextAlign.center,
+              child: TextField(
+                controller: _textController,
+                focusNode: _focusNode,
+                enabled: !isDisabled,
+                style: TextStyle(fontSize: 16 * s),
+                decoration: InputDecoration(
+                  hintText: isDisabled
+                      ? (chatProvider.hasPendingToolCall
+                          ? 'Respond to tool call above...'
+                          : 'Waiting for response...')
+                      : 'Type your message...',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 20 * s,
+                    vertical: 14 * s,
+                  ),
+                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16 * s),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                onSubmitted: (_) => _sendMessage(),
+                maxLines: null,
+                textInputAction: TextInputAction.send,
+              ),
             ),
-          ],
+          ),
+          SizedBox(width: 12 * s),
+          // Send button
+          Material(
+            color: isDisabled
+                ? Colors.grey.shade300
+                : theme.colorScheme.primary,
+            borderRadius: BorderRadius.circular(24 * s),
+            child: InkWell(
+              onTap: isDisabled ? null : _sendMessage,
+              borderRadius: BorderRadius.circular(24 * s),
+              child: Container(
+                width: 48 * s,
+                height: 48 * s,
+                alignment: Alignment.center,
+                child: chatProvider.isLoading
+                    ? SizedBox(
+                        width: 20 * s,
+                        height: 20 * s,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2 * s,
+                          valueColor: AlwaysStoppedAnimation(
+                            isDisabled ? Colors.grey : Colors.white,
+                          ),
+                        ),
+                      )
+                    : Icon(
+                        Icons.send_rounded,
+                        color: isDisabled ? Colors.grey.shade500 : Colors.white,
+                        size: 22 * s,
+                      ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -544,29 +432,36 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildHistoryDrawer(BuildContext context) {
     final theme = Theme.of(context);
+    final s = context.scale;
 
     return Drawer(
+      width: 280 * s,
       child: SafeArea(
         child: Column(
           children: [
             // Drawer header
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16 * s),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.history, size: 24),
-                  const SizedBox(width: 12),
-                  Text('Task History', style: theme.textTheme.titleLarge),
-                  const Spacer(),
+                  Icon(Icons.history, size: 24 * s, color: theme.colorScheme.primary),
+                  SizedBox(width: 12 * s),
+                  Expanded(
+                    child: Text(
+                      'Conversation History',
+                      style: theme.textTheme.titleMedium?.copyWith(fontSize: 16 * s),
+                    ),
+                  ),
                   IconButton(
-                    icon: const Icon(Icons.add),
+                    icon: Icon(Icons.add, color: theme.colorScheme.primary, size: 24 * s),
                     onPressed: () {
                       context.read<ChatProvider>().startNewConversation();
                       Navigator.pop(context);
                     },
+                    tooltip: 'New Conversation',
                   ),
                 ],
               ),
@@ -581,22 +476,25 @@ class _ChatScreenState extends State<ChatScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.message_outlined,
-                            size: 64,
-                            color: Colors.grey.shade400,
+                            Icons.chat_bubble_outline,
+                            size: 64 * s,
+                            color: Colors.grey.shade300,
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16 * s),
                           Text(
-                            'No tasks yet',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Start a conversation to\ncreate your first task',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: Colors.black54,
+                            'No conversations yet',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: Colors.grey.shade500,
+                              fontSize: 16 * s,
                             ),
-                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 8 * s),
+                          Text(
+                            'Start chatting to create one',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.grey.shade400,
+                              fontSize: 14 * s,
+                            ),
                           ),
                         ],
                       ),
@@ -607,29 +505,40 @@ class _ChatScreenState extends State<ChatScreen> {
                     itemCount: chatProvider.conversations.length,
                     itemBuilder: (context, index) {
                       final conv = chatProvider.conversations[index];
-                      final isActive =
-                          conv.id == chatProvider.activeConversationId;
+                      final isActive = conv.id == chatProvider.activeConversationId;
 
                       return ListTile(
                         selected: isActive,
+                        selectedTileColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16 * s, vertical: 4 * s),
                         leading: Icon(
-                          _getStatusIcon(conv.status),
-                          color: theme.colorScheme.primary,
+                          _getConversationIcon(conv.title),
+                          color: isActive
+                              ? theme.colorScheme.primary
+                              : Colors.grey.shade600,
+                          size: 24 * s,
                         ),
                         title: Text(
                           conv.title,
-                          style: theme.textTheme.titleSmall,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                            fontSize: 15 * s,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: Text(
                           conv.preview,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(fontSize: 13 * s),
                         ),
                         trailing: Text(
                           _formatDate(conv.timestamp),
-                          style: theme.textTheme.labelSmall,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: Colors.grey.shade500,
+                            fontSize: 12 * s,
+                          ),
                         ),
                         onTap: () {
                           chatProvider.selectConversation(conv.id);
@@ -647,16 +556,16 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  IconData _getStatusIcon(ConversationStatus status) {
-    if (status == ConversationStatus.completed) {
-      return Icons.check_circle;
-    } else if (status == ConversationStatus.active) {
-      return Icons.chat_bubble;
-    } else if (status == ConversationStatus.error) {
-      return Icons.error;
-    } else {
-      return Icons.access_time;
+  IconData _getConversationIcon(String title) {
+    final lower = title.toLowerCase();
+    if (lower.contains('grab') || lower.contains('ride')) {
+      return Icons.directions_car;
+    } else if (lower.contains('health') || lower.contains('doctor') || lower.contains('hospital')) {
+      return Icons.local_hospital;
+    } else if (lower.contains('weather')) {
+      return Icons.wb_sunny;
     }
+    return Icons.chat_bubble_outline;
   }
 
   String _formatDate(DateTime date) {

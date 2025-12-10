@@ -52,7 +52,8 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "silver_agent");
   }
 
-  gtk_window_set_default_size(window, 1280, 720);
+  // Phone aspect ratio 9:20 for demo - 450x1000 scaled up for HiDPI
+  gtk_window_set_default_size(window, 540, 1200);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(

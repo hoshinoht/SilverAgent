@@ -1,8 +1,13 @@
 // Message Bubble Widget - Displays individual chat messages
-// Supports user and assistant messages with different styling
+// Supports text, thinking blocks, tool calls, and results
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/chat_models.dart';
+import '../providers/chat_provider.dart';
+import '../main.dart';
+import 'tool_call_card.dart';
+import 'thinking_block.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -11,61 +16,175 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isUser = message.role == 'user';
     final theme = Theme.of(context);
 
-    // Show typing indicator
-    if (message.isTyping) {
-      return _buildTypingIndicator(theme);
+    // Handle different message types
+    return switch (message.type) {
+      MessageType.thinking => _buildThinkingMessage(context),
+      MessageType.toolCall => _buildToolCallMessage(context),
+      MessageType.toolResult => _buildToolResultMessage(context, theme),
+      MessageType.systemMessage => _buildSystemMessage(context, theme),
+      MessageType.text => _buildTextMessage(context, theme),
+    };
+  }
+
+  Widget _buildThinkingMessage(BuildContext context) {
+    if (message.metadata?.thinking == null) {
+      return const SizedBox.shrink();
+    }
+
+    return ThinkingBlock(
+      thinking: message.metadata!.thinking!,
+      onToggle: () {
+        context.read<ChatProvider>().toggleThinkingExpanded(message.id);
+      },
+    );
+  }
+
+  Widget _buildToolCallMessage(BuildContext context) {
+    if (message.metadata?.toolCall == null) {
+      return const SizedBox.shrink();
+    }
+
+    final toolCall = message.metadata!.toolCall!;
+    final chatProvider = context.read<ChatProvider>();
+
+    return ToolCallCard(
+      toolCall: toolCall,
+      onAccept: toolCall.status == ToolCallStatus.pending
+          ? () => chatProvider.acceptToolCall()
+          : null,
+      onDecline: toolCall.status == ToolCallStatus.pending
+          ? () => chatProvider.declineToolCall()
+          : null,
+      onToggleResult: () => chatProvider.toggleToolResultExpanded(message.id),
+    );
+  }
+
+  Widget _buildToolResultMessage(BuildContext context, ThemeData theme) {
+    final s = context.scale;
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 8 * s, horizontal: 16 * s),
+      padding: EdgeInsets.all(16 * s),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(16 * s),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.output, color: Colors.blue.shade700, size: 26 * s),
+          SizedBox(width: 14 * s),
+          Expanded(
+            child: Text(
+              'Tool result received',
+              style: TextStyle(
+                fontSize: 17 * s,
+                color: Colors.blue.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSystemMessage(BuildContext context, ThemeData theme) {
+    final s = context.scale;
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 8 * s, horizontal: 16 * s),
+      padding: EdgeInsets.symmetric(horizontal: 20 * s, vertical: 12 * s),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.info_outline,
+            color: Colors.grey.shade500,
+            size: 20 * s,
+          ),
+          SizedBox(width: 10 * s),
+          Text(
+            message.content,
+            style: TextStyle(
+              fontSize: 16 * s,
+              color: Colors.grey.shade500,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextMessage(BuildContext context, ThemeData theme) {
+    final s = context.scale;
+    final isUser = message.role == 'user';
+
+    // Show typing/streaming indicator
+    if (message.isTyping || (message.isStreaming && message.content.isEmpty)) {
+      return _buildTypingIndicator(context, theme);
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16 * s, vertical: 8 * s),
       child: Column(
         crossAxisAlignment:
             isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          // Agent badge
+          // Agent badge for assistant
           if (!isUser) ...[
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: EdgeInsets.all(8 * s),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.smart_toy_rounded,
-                    size: 14,
+                    size: 22 * s,
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 10 * s),
                 Text(
                   'SilverAgent',
-                  style: theme.textTheme.labelSmall?.copyWith(
+                  style: TextStyle(
+                    fontSize: 16 * s,
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                if (message.isStreaming) ...[
+                  SizedBox(width: 10 * s),
+                  SizedBox(
+                    width: 18 * s,
+                    height: 18 * s,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2 * s,
+                      valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                    ),
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 8 * s),
           ],
 
-          // Bubble
+          // Message bubble
           Container(
             constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.8,
+              maxWidth: MediaQuery.of(context).size.width * 0.85,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: EdgeInsets.symmetric(horizontal: 22 * s, vertical: 18 * s),
             decoration: BoxDecoration(
               gradient: isUser
                   ? LinearGradient(
                       colors: [
                         theme.colorScheme.primary,
-                        const Color(0xFF00695C), // Darker teal for depth
+                        const Color(0xFF00695C),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -73,18 +192,18 @@ class MessageBubble extends StatelessWidget {
                   : null,
               color: isUser ? null : Colors.white,
               borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(24),
-                topRight: const Radius.circular(24),
-                bottomLeft: Radius.circular(isUser ? 24 : 4),
-                bottomRight: Radius.circular(isUser ? 4 : 24),
+                topLeft: Radius.circular(24 * s),
+                topRight: Radius.circular(24 * s),
+                bottomLeft: Radius.circular(isUser ? 24 * s : 4 * s),
+                bottomRight: Radius.circular(isUser ? 4 * s : 24 * s),
               ),
               boxShadow: [
                 BoxShadow(
                   color: isUser
                       ? theme.colorScheme.primary.withValues(alpha: 0.2)
                       : Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+                  blurRadius: 12 * s,
+                  offset: Offset(0, 4 * s),
                 ),
               ],
             ),
@@ -92,32 +211,31 @@ class MessageBubble extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Message content
-                Text(
+                SelectableText(
                   message.content,
-                  style: theme.textTheme.bodyLarge?.copyWith(
+                  style: TextStyle(
+                    fontSize: 18 * s,
                     color: isUser ? Colors.white : const Color(0xFF2C2C2C),
                     height: 1.5,
-                    fontSize: 18.0,
-                    fontWeight: FontWeight.w400,
                   ),
                 ),
-                const SizedBox(height: 6),
-                // Timestamp
+                SizedBox(height: 8 * s),
+                // Timestamp and status
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (message.status != null)
                       Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: _buildStatusIcon(message.status!, isUser),
+                        padding: EdgeInsets.only(right: 6 * s),
+                        child: _buildStatusIcon(context, message.status!, isUser),
                       ),
                     Text(
                       _formatTime(message.timestamp),
-                      style: theme.textTheme.labelSmall?.copyWith(
+                      style: TextStyle(
+                        fontSize: 14 * s,
                         color: isUser
                             ? Colors.white.withValues(alpha: 0.8)
                             : Colors.grey.shade400,
-                        fontSize: 11,
                       ),
                     ),
                   ],
@@ -125,194 +243,64 @@ class MessageBubble extends StatelessWidget {
               ],
             ),
           ),
-
-          // Appointment details if available
-          if (message.metadata?.appointmentDetails != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: _buildAppointmentCard(
-                message.metadata!.appointmentDetails!,
-                theme,
-              ),
-            ),
-
-          // Error retry info
-          if (message.status == MessageStatus.retrying)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: _buildRetryInfo(message.metadata, theme),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildTypingIndicator(ThemeData theme) {
+  Widget _buildTypingIndicator(BuildContext context, ThemeData theme) {
+    final s = context.scale;
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        margin: EdgeInsets.symmetric(vertical: 8 * s, horizontal: 16 * s),
+        padding: EdgeInsets.symmetric(horizontal: 24 * s, vertical: 18 * s),
         decoration: BoxDecoration(
-          color: theme.colorScheme.secondary,
-          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24 * s),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              blurRadius: 8 * s,
+              offset: Offset(0, 4 * s),
             ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildTypingDot(delay: 0),
-            const SizedBox(width: 4),
-            _buildTypingDot(delay: 200),
-            const SizedBox(width: 4),
-            _buildTypingDot(delay: 400),
+            SizedBox(
+              width: 24 * s,
+              height: 24 * s,
+              child: CircularProgressIndicator(
+                strokeWidth: 3 * s,
+                valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+              ),
+            ),
+            SizedBox(width: 14 * s),
+            Text(
+              'Thinking...',
+              style: TextStyle(
+                fontSize: 18 * s,
+                color: Colors.grey.shade600,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTypingDot({required int delay}) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 600),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: (value * 2).clamp(0.3, 1.0),
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade600,
-              shape: BoxShape.circle,
-            ),
-          ),
-        );
-      },
-    );
-  }
+  Widget _buildStatusIcon(BuildContext context, MessageStatus status, bool isUser) {
+    final s = context.scale;
+    final (icon, color) = switch (status) {
+      MessageStatus.success => (Icons.check_circle, isUser ? Colors.white70 : Colors.green),
+      MessageStatus.error => (Icons.error, Colors.red),
+      MessageStatus.retrying => (Icons.refresh, Colors.orange),
+      MessageStatus.pending => (Icons.access_time, isUser ? Colors.white70 : Colors.grey),
+    };
 
-  Widget _buildStatusIcon(MessageStatus status, bool isUser) {
-    IconData icon;
-    Color color;
-
-    switch (status) {
-      case MessageStatus.success:
-        icon = Icons.check_circle;
-        color = isUser ? Colors.white70 : Colors.green;
-        break;
-      case MessageStatus.error:
-        icon = Icons.error;
-        color = Colors.red;
-        break;
-      case MessageStatus.retrying:
-        icon = Icons.refresh;
-        color = Colors.orange;
-        break;
-      default:
-        icon = Icons.access_time;
-        color = isUser ? Colors.white70 : Colors.grey;
-    }
-
-    return Icon(icon, size: 12, color: color);
-  }
-
-  Widget _buildAppointmentCard(AppointmentDetails details, ThemeData theme) {
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildDetailRow(Icons.local_hospital, 'Hospital', details.hospital),
-          const SizedBox(height: 6),
-          _buildDetailRow(
-            Icons.medical_services,
-            'Department',
-            details.department,
-          ),
-          const SizedBox(height: 6),
-          _buildDetailRow(Icons.calendar_today, 'Date', details.date),
-          const SizedBox(height: 6),
-          _buildDetailRow(Icons.access_time, 'Time', details.time),
-          const SizedBox(height: 6),
-          _buildDetailRow(
-            Icons.confirmation_number,
-            'Ref',
-            details.referenceNumber,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: Colors.black54),
-        const SizedBox(width: 6),
-        Text(
-          '$label: ',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontSize: 12, color: Colors.black87),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRetryInfo(MessageMetadata? metadata, ThemeData theme) {
-    if (metadata == null) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Retrying (${metadata.retryCount}/${metadata.maxRetries})...',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: Colors.orange.shade800,
-            ),
-          ),
-        ],
-      ),
-    );
+    return Icon(icon, size: 16 * s, color: color);
   }
 
   String _formatTime(DateTime timestamp) {
