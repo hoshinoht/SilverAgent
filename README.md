@@ -250,7 +250,7 @@ This project was built by Team RefusedBequest for HackRift 2025:
 - **Lucas** - AI/ML Engineering & Model Fine-tuning
 - **William** - System Design & Multi-Agent Architecture
 - **Haoting** - Flutter Development & UI/UX
-- **Keiren** - UI/UX Design
+- **Kieran** - UI/UX Design
 - **Annaqi** - Product Design & User Research
 
 
