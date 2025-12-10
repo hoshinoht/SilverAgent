@@ -18,7 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       body: SafeArea(
         child: Column(
           children: [
@@ -84,7 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(Icons.person, size: 40, color: Colors.white),
@@ -105,7 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(
                     '+65 9123 4567',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
                 ],
@@ -169,7 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _notifyOnBooking = value;
             });
           },
-          activeColor: theme.colorScheme.primary,
+          activeTrackColor: theme.colorScheme.primary,
         ),
       ],
     );

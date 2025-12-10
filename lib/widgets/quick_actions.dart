@@ -45,23 +45,23 @@ class _QuickActionButton extends StatelessWidget {
   IconData _getIcon(String iconName) {
     switch (iconName) {
       case 'polyclinic':
-        return Icons.business;
+        return Icons.business_rounded;
       case 'singhealth':
-        return Icons.local_hospital;
+        return Icons.local_hospital_rounded;
       case 'nuhs':
-        return Icons.medical_services;
+        return Icons.medical_services_rounded;
       case 'help':
-        return Icons.help_outline;
+        return Icons.support_agent_rounded;
       case 'calendar':
-        return Icons.calendar_today;
+        return Icons.calendar_month_rounded;
       case 'call':
-        return Icons.phone;
+        return Icons.phone_in_talk_rounded;
       case 'smart':
-        return Icons.auto_awesome;
+        return Icons.auto_awesome_rounded;
       case 'doctor':
-        return Icons.person;
+        return Icons.person_rounded;
       default:
-        return Icons.help_outline;
+        return Icons.help_outline_rounded;
     }
   }
 
@@ -73,18 +73,17 @@ class _QuickActionButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade300, width: 2),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -93,35 +92,46 @@ class _QuickActionButton extends StatelessWidget {
             children: [
               // Icon container
               Container(
-                width: 56,
-                height: 56,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.secondary,
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.primary.withValues(alpha: 0.1),
+                      theme.colorScheme.primary.withValues(alpha: 0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
                 ),
                 child: Icon(
                   _getIcon(action.icon),
-                  size: 28,
+                  size: 30,
                   color: theme.colorScheme.primary,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               // Label
               Text(
                 action.label,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF2C2C2C),
+                  fontSize: 15,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               if (action.sublabel != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   action.sublabel!,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.black54,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.grey.shade500,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,

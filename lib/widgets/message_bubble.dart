@@ -19,91 +19,130 @@ class MessageBubble extends StatelessWidget {
       return _buildTypingIndicator(theme);
     }
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.8,
-        ),
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isUser
-              ? theme.colorScheme.primary
-              : theme.colorScheme.secondary,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(isUser ? 20 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 20),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Agent badge for assistant messages
-            if (!isUser &&
-                message.agentType != null &&
-                message.agentType != AgentType.general)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildAgentBadge(message.agentType!, theme),
-              ),
-
-            // Message content
-            Text(
-              message.content,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: isUser ? Colors.white : Colors.black87,
-                height: 1.4,
-              ),
-            ),
-
-            const SizedBox(height: 4),
-
-            // Status and timestamp
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment:
+            isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          // Agent badge
+          if (!isUser) ...[
             Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                // Status icon
-                if (message.status != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: _buildStatusIcon(message.status!, isUser),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
                   ),
-
-                // Timestamp
+                  child: Icon(
+                    Icons.smart_toy_rounded,
+                    size: 14,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Text(
-                  _formatTime(message.timestamp),
+                  'SilverAgent',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: isUser
-                        ? Colors.white.withOpacity(0.7)
-                        : Colors.black54,
-                    fontSize: 10,
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 4),
+          ],
 
-            // Appointment details if available
-            if (message.metadata?.appointmentDetails != null)
-              _buildAppointmentCard(
+          // Bubble
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              gradient: isUser
+                  ? LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary,
+                        const Color(0xFF00695C), // Darker teal for depth
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: isUser ? null : Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(24),
+                topRight: const Radius.circular(24),
+                bottomLeft: Radius.circular(isUser ? 24 : 4),
+                bottomRight: Radius.circular(isUser ? 4 : 24),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isUser
+                      ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                      : Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Message content
+                Text(
+                  message.content,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: isUser ? Colors.white : const Color(0xFF2C2C2C),
+                    height: 1.5,
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Timestamp
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (message.status != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: _buildStatusIcon(message.status!, isUser),
+                      ),
+                    Text(
+                      _formatTime(message.timestamp),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: isUser
+                            ? Colors.white.withValues(alpha: 0.8)
+                            : Colors.grey.shade400,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Appointment details if available
+          if (message.metadata?.appointmentDetails != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: _buildAppointmentCard(
                 message.metadata!.appointmentDetails!,
                 theme,
               ),
+            ),
 
-            // Error retry info
-            if (message.status == MessageStatus.retrying)
-              _buildRetryInfo(message.metadata, theme),
-          ],
-        ),
+          // Error retry info
+          if (message.status == MessageStatus.retrying)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: _buildRetryInfo(message.metadata, theme),
+            ),
+        ],
       ),
     );
   }
@@ -119,7 +158,7 @@ class MessageBubble extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -159,51 +198,6 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildAgentBadge(AgentType agentType, ThemeData theme) {
-    String label;
-    IconData icon;
-
-    switch (agentType) {
-      case AgentType.singhealth:
-        label = 'SingHealth Portal';
-        icon = Icons.local_hospital;
-        break;
-      case AgentType.nuhs:
-        label = 'NUHS Portal';
-        icon = Icons.medical_services;
-        break;
-      case AgentType.polyclinic:
-        label = 'Polyclinic Portal';
-        icon = Icons.health_and_safety;
-        break;
-      default:
-        label = 'SilverAgent';
-        icon = Icons.favorite;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: theme.colorScheme.primary),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStatusIcon(MessageStatus status, bool isUser) {
     IconData icon;
     Color color;
@@ -237,7 +231,7 @@ class MessageBubble extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.2),
+          color: theme.colorScheme.primary.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -296,7 +290,7 @@ class MessageBubble extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
+        color: Colors.orange.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
