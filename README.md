@@ -1,61 +1,151 @@
-# SilverAgent - Flutter Healthcare Assistant
+# SilverAgent - Singapore Super App
 
-A senior-friendly healthcare appointment booking assistant app built with Flutter. This is a complete Flutter implementation of the React-based SilverAgent application.
+A senior-friendly AI-powered super app built with Flutter, designed to help Singaporeans (especially seniors) manage healthcare appointments, book rides, order food, and access essential services through natural conversational AI.
 
 ## Overview
 
-SilverAgent is designed to help seniors in Singapore book healthcare appointments easily through:
-- **Voice Recognition**: Speak naturally in English or Singlish
-- **Smart Routing**: Automatically routes to the right hospital based on medical history
-- **Multi-Agent System**: Integrates with SingHealth, NUHS, and Polyclinic portals
-- **Family Loop**: Automatically notifies family members of bookings
-- **Senior-Friendly UI**: Large text, clear buttons, and simple navigation
+SilverAgent is Singapore's first AI-powered super app that combines:
+- **Advanced AI Assistant**: Powered by a fine-tuned SEA-LION language model optimized for Singapore context
+- **Multi-Service Integration**: Healthcare (NUH), Transportation (Grab), Weather, and more
+- **Senior-Friendly Design**: Adaptive scaling, large text, clear buttons, and simple navigation
+- **Natural Language Understanding**: Supports English and Singlish with context-aware responses
+- **Multi-Agent System**: Specialized agents for different service portals (NUH, Grab, Weather)
+- **Proactive Assistance**: Smart suggestions for weather and transport based on appointments
+
+## AI Model
+
+SilverAgent uses a **fine-tuned SEA-LION language model** specifically optimized for Singapore healthcare and service interactions:
+
+### Model Details
+- **Model**: [LLJYY/SEALION-TC-v1](https://huggingface.co/LLJYY/SEALION-TC-v1)
+- **Base**: SEA-LION (Southeast Asian Languages In One Network)
+- **Fine-tuning**: Custom dataset for Singapore healthcare, Singlish understanding, and senior-friendly interactions
+- **Capabilities**:
+  - Intent detection for healthcare appointments, ride booking, food ordering
+  - Context-aware conversation management
+  - Singlish and colloquial language understanding
+  - Proactive suggestions (weather checks before appointments, transport booking)
+  - Error handling and retry logic for service failures
+
+### Why SEA-LION?
+- Trained on Southeast Asian languages and contexts
+- Better understanding of Singlish and local expressions
+- Optimized for Singapore-specific entities (hospitals, locations, services)
+- Lower latency for regional deployments
+
+## Architecture
+
+### New Design Features
+
+#### 1. **Adaptive Scaling System**
+The app automatically scales UI elements based on device and window size:
+- Base design height: 1200px
+- Dynamic scale factor: 0.8x to 2.5x
+- Text and spacing scale proportionally
+- Optimized for tablets, phones, and accessibility modes
+
+#### 2. **Multi-Agent Architecture**
+```
+SilverAgent (Main)
+├── NUH Agent (Healthcare Portal)
+│   ├── Appointments
+│   ├── Medical Records
+│   ├── Prescriptions
+│   └── Lab Results
+├── Grab Agent (Transport & Food)
+│   ├── Ride Booking
+│   ├── Food Ordering
+│   └── Service Tracking
+└── Weather Agent (Proactive)
+    ├── Current Conditions
+    ├── Forecasts
+    └── UV Index
+```
+
+#### 3. **Strategy-Based Reasoning**
+Every AI response follows a structured reasoning pattern:
+- **Intent Detection**: What does the user want?
+- **Task Status Tracking**: Is the primary request complete?
+- **Tool Selection**: Which single tool to call next?
+- **Proactive Logic**: When to offer additional help (weather, transport)
+
+#### 4. **Enhanced Chat Interface**
+- **Thinking Blocks**: Visual representation of AI reasoning process
+- **Tool Call Cards**: Display service integrations in real-time
+- **Retry Logic**: Automatic retries with user-friendly error messages
+- **Status Indicators**: Loading, success, error, and retry states
 
 ## Features
 
-### Core Features
-- ✅ Chat-based interface with AI assistant
-- ✅ Voice input with speech-to-text
+### Core Capabilities
+- ✅ Natural language conversation in English and Singlish
+- ✅ Voice input with speech-to-text (planned)
 - ✅ Quick action buttons for common tasks
-- ✅ Medical history integration (simulated MCP server)
-- ✅ Smart hospital recommendations
+- ✅ Multi-service integration (Healthcare, Transport, Weather)
 - ✅ Conversation history with task tracking
-- ✅ Profile management
-- ✅ Family notification system
+- ✅ Adaptive UI scaling for accessibility
+- ✅ Proactive assistance and suggestions
+- ✅ Context-aware error handling
+
+### Service Integrations
+
+#### Healthcare (NUH MCP)
+- Book, reschedule, and cancel appointments
+- View medical records and prescriptions
+- Check lab results
+- Monitor clinic queue status
+- Get doctor information
+
+#### Transportation & Food (Grab MCP)
+- Book rides (GrabCar, GrabShare, Premium)
+- Track ride status and ETA
+- Order food delivery
+- Search restaurants
+- View order history
+
+#### Weather Services
+- Current weather conditions
+- Multi-day forecasts
+- Weather alerts
+- UV index for outdoor activities
 
 ### User Experience
 - Material Design 3 components
 - Smooth animations and transitions
-- Responsive layouts for different screen sizes
-- Accessibility-friendly design
-- Safe area handling for iOS notches
+- Responsive layouts for all screen sizes
+- Accessibility-friendly design with adaptive scaling
+- Safe area handling for modern devices
+- Dark mode support (planned)
 
 ## Project Structure
 
 ```
 lib/
-├── main.dart                 # App entry point
-├── models/                   # Data models
-│   ├── chat_models.dart      # Chat, Message, Conversation models
-│   └── medical_history.dart  # Medical history models
-├── providers/                # State management
-│   └── chat_provider.dart    # Chat state provider
-├── screens/                  # App screens
-│   ├── chat_screen.dart      # Main chat interface
-│   └── profile_screen.dart   # User profile
-├── services/                 # Business logic
-│   ├── medical_history_service.dart  # MCP server simulation
-│   └── silver_agent_service.dart     # AI intent detection
-└── widgets/                  # Reusable components
-    ├── message_bubble.dart   # Chat message bubbles
-    └── quick_actions.dart    # Quick action buttons
+├── main.dart                      # App entry point with scaling system
+├── models/                        # Data models
+│   ├── chat_models.dart          # Chat, Message, Conversation models
+│   └── medical_history.dart      # Medical history models (legacy)
+├── providers/                     # State management
+│   └── chat_provider.dart        # Chat state with multi-agent support
+├── screens/                       # App screens
+│   └── chat_screen.dart          # Main chat interface
+├── services/                      # Business logic
+│   ├── medical_history_service.dart  # Legacy medical service
+│   └── silver_agent_service.dart     # AI intent detection & responses
+├── utils/                         # Utilities
+│   └── (utility functions)
+└── widgets/                       # Reusable components
+    ├── message_bubble.dart       # Chat message bubbles
+    ├── quick_actions.dart        # Quick action buttons
+    ├── thinking_block.dart       # AI reasoning visualization
+    └── tool_call_card.dart       # Service integration cards
 ```
 
 ## Getting Started
 
 ### Prerequisites
 - Flutter SDK (3.10.1 or higher)
-- Dart SDK (included with Flutter)
+- Dart SDK (3.9.0 or higher)
 - iOS/Android development environment set up
 - For iOS: Xcode 14+
 - For Android: Android Studio with SDK 21+
@@ -64,7 +154,8 @@ lib/
 
 1. **Clone the repository**
    ```bash
-   cd refusedbequest/flutter
+   git clone <repository-url>
+   cd refusedbequest-app
    ```
 
 2. **Install dependencies**
@@ -72,17 +163,14 @@ lib/
    flutter pub get
    ```
 
-3. **Configure permissions**
+3. **Configure API Keys** (when integrating real services)
    
-   **For iOS**: Add to `ios/Runner/Info.plist`:
-   ```xml
-   <key>NSMicrophoneUsageDescription</key>
-   <string>We need microphone access for voice input to help you book appointments</string>
-   <key>NSSpeechRecognitionUsageDescription</key>
-   <string>We need speech recognition to understand your voice commands</string>
+   Create a `.env` file in the project root:
+   ```env
+   HUGGINGFACE_API_KEY=your_hf_api_key_here
+   NUH_API_KEY=your_nuh_api_key
+   GRAB_API_KEY=your_grab_api_key
    ```
-
-   **For Android**: Permissions are already configured in `android/app/src/main/AndroidManifest.xml`
 
 4. **Run the app**
    ```bash
@@ -118,145 +206,12 @@ flutter build ios --release
 | Package | Purpose |
 |---------|---------|
 | `provider` | State management |
-| `speech_to_text` | Voice recognition |
-| `permission_handler` | Runtime permissions |
 | `intl` | Internationalization and date formatting |
 | `shared_preferences` | Local data persistence |
 | `uuid` | Unique ID generation |
 | `http` | HTTP client for API calls |
 
-## Architecture
-
-### State Management
-Uses `provider` package for reactive state management:
-- `ChatProvider`: Manages chat messages, conversations, and interactions
-
-### Services Layer
-- `MedicalHistoryService`: Simulates MCP server data retrieval
-- `SilverAgentService`: AI-powered intent detection and response generation
-
-### Models
-- `Message`: Individual chat messages
-- `Conversation`: Chat conversation threads
-- `MedicalHistory`: User's medical records
-- `QuickAction`: Quick action button definitions
-
-## Configuration
-
-### Theme Customization
-Edit `lib/main.dart` to customize colors and typography:
-```dart
-colorScheme: ColorScheme.fromSeed(
-  seedColor: const Color(0xFFE8754F), // Primary color
-  // ... other colors
-)
-```
-
-### Quick Actions
-Modify quick action buttons in `lib/providers/chat_provider.dart`:
-```dart
-final List<QuickAction> quickActions = [
-  QuickAction(
-    id: '1',
-    label: 'Your Action',
-    // ... configuration
-  ),
-];
-```
-
-## Voice Recognition Setup
-
-The app uses `speech_to_text` package for voice input:
-- Supports English (Singapore) locale by default
-- Automatically handles permissions
-- Provides real-time transcription feedback
-- Falls back to text input if unavailable
-
-**Supported Languages:**
-- English (Singapore) - `en_SG`
-- Can be configured for other locales
-
-## Medical History Integration
-
-The app simulates integration with healthcare MCP (Model Context Protocol) servers:
-
-```dart
-// Fetch medical history
-final history = await MedicalHistoryService.fetchMedicalHistory();
-
-// Get smart recommendations
-final recommendation = MedicalHistoryService.getSmartHospitalRecommendation(
-  history,
-  symptoms,
-);
-```
-
-In production, replace the mock service with actual API calls to healthcare systems.
-
-## AI Agent System
-
-### Intent Detection
-The app uses rule-based intent detection (can be replaced with ML models):
-```dart
-final intent = SilverAgentService.detectIntent(userInput);
-```
-
-### Multi-Agent Routing
-- **General Agent**: Initial triage
-- **SingHealth Portal**: SGH and affiliated hospitals
-- **NUHS Portal**: NUH and affiliated hospitals
-- **Polyclinic Portal**: General healthcare
-
-### Smart Recommendations
-Based on:
-- Medical history
-- Previous appointments
-- Symptom analysis
-- User preferences
-
-## Family Loop Feature
-
-Automatically notifies family members when appointments are booked:
-- Configured in user profile
-- Toggle on/off per booking
-- Shows notification status in chat
-
-## Testing
-
-### Unit Tests
-```bash
-flutter test test/models/
-flutter test test/services/
-```
-
-### Integration Tests
-```bash
-flutter test integration_test/
-```
-
-### Widget Tests
-```bash
-flutter test test/widgets/
-```
-
-## Deployment
-
-### Android
-1. Configure signing in `android/app/build.gradle`
-2. Build release APK: `flutter build apk --release`
-3. Or build App Bundle: `flutter build appbundle --release`
-
-### iOS
-1. Configure signing in Xcode
-2. Build: `flutter build ios --release`
-3. Archive and upload via Xcode or Transporter
-
 ## Troubleshooting
-
-### Speech Recognition Not Working
-- Check microphone permissions
-- Ensure device has internet (some recognition requires cloud)
-- Test on physical device (may not work on simulators)
 
 ### Build Errors
 ```bash
@@ -273,40 +228,45 @@ flutter run
 
 ## Roadmap
 
-- [ ] Real MCP server integration
-- [ ] Advanced ML-based intent recognition
+- [ ] Real API integration with NUH, Grab, Weather services
+- [ ] Voice input with speech-to-text
 - [ ] Multi-language support (Mandarin, Malay, Tamil)
-- [ ] Offline mode
-- [ ] Push notifications
+- [ ] Offline mode with local caching
+- [ ] Push notifications for appointments and reminders
 - [ ] Calendar integration
 - [ ] Medication reminders
 - [ ] Video call with doctors
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- [ ] Dark mode support
+- [ ] Accessibility enhancements
 
 ## License
 
 This project is licensed under the MIT License.
 
+## Contributors
+
+This project was built by Team RefusedBequest for HackRift 2025:
+
+- **Lucas** - AI/ML Engineering & Model Fine-tuning
+- **William** - System Design & Multi-Agent Architecture
+- **Haoting** - Flutter Development & UI/UX
+- **Keiren** - UI/UX Design
+- **Annaqi** - Product Design & User Research
+
+
+
 ## Acknowledgments
 
-- Original React implementation of SilverAgent
-- Flutter and Dart teams for excellent documentation
+- SEA-LION team for the base language model
 - Singapore healthcare system for inspiration
-- Seniors who provided valuable feedback
+- Seniors who provided valuable feedback during user testing
+- HackRift 2025 organizers and mentors
 
 ## Support
 
 For issues and questions:
 - Open an issue on GitHub
-- Contact: support@silveragent.sg
-- Documentation: https://docs.silveragent.sg
+- Contact: team@silveragent.sg
 
 ---
 
